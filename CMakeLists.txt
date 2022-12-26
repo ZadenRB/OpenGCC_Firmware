@@ -11,12 +11,17 @@ if (TARGET tinyusb_device)
     add_executable(NobGCC)
 
     target_sources(NobGCC PRIVATE
-        src/q2x14.hpp
-        src/q2x14.cpp
+        src/common.h
         src/configuration.hpp
         src/configuration.cpp
+        src/console_communication.hpp
+        src/console_communication.cpp
+        src/joybus_uf2_bootloader.hpp
+        src/joybus_uf2_bootloader.cpp
         src/nob_gcc.hpp
         src/nob_gcc.cpp
+        src/q2x14.hpp
+        src/q2x14.cpp
     )
 
     target_compile_definitions(NobGCC PRIVATE
@@ -29,6 +34,7 @@ if (TARGET tinyusb_device)
         hardware_dma
         hardware_flash
         hardware_gpio
+        hardware_irq
         hardware_pio
         hardware_pll
         hardware_xosc

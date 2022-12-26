@@ -16,24 +16,16 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#include "hardware/flash.h"
+#include "console_communication.hpp"
 
-struct controller_config {
-    uint8_t mappings[13];
-};
+#include "common.h"
+#include "hardware/dma.h"
+#include "joybus.pio.h"
 
-const uint32_t CONFIG_FLASH_BASE = PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE;
-const uint32_t CONFIG_SRAM_BASE = XIP_NOCACHE_NOALLOC_BASE + CONFIG_FLASH_BASE;
-
-const uint32_t PAGES_PER_SECTOR = FLASH_SECTOR_SIZE / FLASH_PAGE_SIZE;
-const uint32_t LAST_PAGE = PAGES_PER_SECTOR - 1;
-
-const uint32_t CONFIG_SIZE = sizeof(controller_config);
-
-// Configuration - stored to flash
-uint32_t config_read_page();
-uint32_t config_write_page();
-
-controller_config load_config();
-
-void persist_config(controller_config*);
+// Send buffer of data
+void send_data(uint8_t buf[], uint32_t length) {
+    dma_channel_config tx_config = dma_get_channel_config(tx_dma);
+    dma_channel_configure(tx_dma, &tx_config, &joybus_pio->txf[tx_sm], buf,
+                          length, true);
+    pio_interrupt_clear(joybus_pio, TX_WAIT_IRQ);
+}

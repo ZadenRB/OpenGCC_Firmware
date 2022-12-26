@@ -3,15 +3,20 @@
 
     This file is part of NobGCC-SW.
 
-    NobGCC-SW is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+    NobGCC-SW is free software: you can redistribute it and/or modify it under
+   the terms of the GNU General Public License as published by the Free Software
+   Foundation, either version 3 of the License, or (at your option) any later
+   version.
 
-    NobGCC-SW is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+    NobGCC-SW is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+   A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License along with NobGCC. If not, see http://www.gnu.org/licenses/.
+    You should have received a copy of the GNU General Public License along with
+   NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
 #include "configuration.hpp"
-
 #include "pico/stdlib.h"
 
 // Pin assignments
@@ -61,7 +66,7 @@ struct controller_state {
     bool origin = 1;
     bool safe_mode = 1;
     uint16_t active_combo = 0;
-    alarm_id_t combo_alarm ;
+    alarm_id_t combo_alarm;
     controller_config config;
 };
 
@@ -77,7 +82,7 @@ struct raw_trigger {
 
 // Core 0
 void handle_console_request();
-void send_mode(char mode);
+void send_mode(uint8_t mode);
 inline void read_digital(uint16_t physical_buttons);
 inline void remap(uint16_t physical_buttons, uint16_t *remapped_buttons,
                   uint8_t to_remap, uint8_t mapping);

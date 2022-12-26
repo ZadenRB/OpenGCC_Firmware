@@ -3,37 +3,49 @@
 
     This file is part of NobGCC-SW.
 
-    NobGCC-SW is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+    NobGCC-SW is free software: you can redistribute it and/or modify it under
+   the terms of the GNU General Public License as published by the Free Software
+   Foundation, either version 3 of the License, or (at your option) any later
+   version.
 
-    NobGCC-SW is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+    NobGCC-SW is distributed in the hope that it will be useful, but WITHOUT ANY
+   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+   A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License along with NobGCC. If not, see http://www.gnu.org/licenses/.
+    You should have received a copy of the GNU General Public License along with
+   NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
 #include "nob_gcc.hpp"
-#include "q2x14.hpp"
-#include "joybus.pio.h"
-#include "read_pwm.pio.h"
 
+#include <stdio.h>
+
+#include <vector>
+
+#include "common.h"
+#include "console_communication.hpp"
 #include "hardware/adc.h"
 #include "hardware/clocks.h"
 #include "hardware/dma.h"
 #include "hardware/gpio.h"
+#include "hardware/irq.h"
 #include "hardware/pio.h"
 #include "hardware/pll.h"
 #include "hardware/xosc.h"
+#include "joybus.pio.h"
+#include "joybus_uf2_bootloader.hpp"
 #include "pico/float.h"
 #include "pico/multicore.h"
 #include "pico/time.h"
-#include "stdio.h"
+#include "q2x14.hpp"
+#include "read_pwm.pio.h"
 
 controller_state state;
 
 PIO joybus_pio;
-uint tx_sm;
 uint rx_sm;
+uint tx_sm;
 uint tx_dma;
-char tx_buffer[10];
 
 int main() {
     // Initialize clocks
@@ -108,22 +120,18 @@ int main() {
 void handle_console_request() {
     pio_interrupt_clear(joybus_pio, RX_SYS_IRQ);
 
-    char request[3];
-    for (int i = 0; !pio_sm_is_rx_fifo_empty(joybus_pio, rx_sm) && i < 3; ++i) {
-        request[i] = (char)pio_sm_get(joybus_pio, rx_sm);
+    uint8_t request[8];
+    for (int i = 0; !pio_sm_is_rx_fifo_empty(joybus_pio, rx_sm) && i < 8; ++i) {
+        request[i] = (uint8_t)pio_sm_get(joybus_pio, rx_sm);
     }
 
     switch (request[0]) {
         case 0xFF:
             // TODO: reset
         case 0x00: {
-            tx_buffer[0] = 0x09;
-            tx_buffer[1] = 0x00;
-            tx_buffer[2] = 0x03;
-            dma_channel_config tx_config = dma_get_channel_config(tx_dma);
-            dma_channel_configure(tx_dma, &tx_config, &pio0_hw->txf[tx_sm],
-                                  tx_buffer, 3, true);
-            pio_interrupt_clear(joybus_pio, TX_WAIT_IRQ);
+            // Device identifier
+            uint8_t buf[3] = {0x09, 0x00, 0x03};
+            send_data(buf, 3);
             return;
         }
         case 0x40:
@@ -140,6 +148,28 @@ void handle_console_request() {
         case 0x43:
             request[1] = 0x05;
             break;
+        case 0x44: {
+            // Firmware version X.Y.Z {X, Y, Z}
+            uint8_t buf[3] = {0x00, 0x00, 0x00};
+            send_data(buf, 3);
+            return;
+        }
+        case 0x45: {
+            uint32_t requested_firmware_size = request[1] | (request[2] << 8) |
+                                               (request[3] << 16) |
+                                               (request[4] << 24);
+            uint8_t buf[1];
+            if (requested_firmware_size <=
+                PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE) {
+                buf[0] = 0x00;
+                send_data(buf, 1);
+                joybus_uf2_bootloader_enter();
+            } else {
+                buf[0] = 0x01;
+                send_data(buf, 1);
+            }
+            return;
+        }
         default:
             // Continue reading if command was unknown
             pio_interrupt_clear(joybus_pio, RX_WAIT_IRQ);
@@ -147,80 +177,83 @@ void handle_console_request() {
     }
 
     send_mode(request[1]);
-    pio_interrupt_clear(joybus_pio, TX_WAIT_IRQ);
     return;
 }
 
 // Send controller state in given mode
-void send_mode(char mode) {
-    int transfer_count = mode < 0x05 ? 8 : 10;
+void send_mode(uint8_t mode) {
+    uint8_t buf[8];
+    uint32_t length;
     switch (mode) {
         case 0x00:
-            tx_buffer[0] = state.buttons >> 8;
-            tx_buffer[1] = state.buttons & 0x00FF;
-            tx_buffer[2] = state.a_stick.x;
-            tx_buffer[3] = state.a_stick.y;
-            tx_buffer[4] = state.c_stick.x;
-            tx_buffer[5] = state.c_stick.y;
-            tx_buffer[6] = (state.triggers.l & 0xF0) | (state.triggers.r >> 4);
-            tx_buffer[7] = 0x00;
+            length = 8;
+            buf[0] = state.buttons >> 8;
+            buf[1] = state.buttons & 0x00FF;
+            buf[2] = state.a_stick.x;
+            buf[3] = state.a_stick.y;
+            buf[4] = state.c_stick.x;
+            buf[5] = state.c_stick.y;
+            buf[6] = (state.triggers.l & 0xF0) | (state.triggers.r >> 4);
+            buf[7] = 0x00;
             break;
         case 0x01:
-            tx_buffer[0] = state.buttons >> 8;
-            tx_buffer[1] = state.buttons & 0x00FF;
-            tx_buffer[2] = state.a_stick.x;
-            tx_buffer[3] = state.a_stick.y;
-            tx_buffer[4] = (state.c_stick.x & 0xF0) | (state.c_stick.y >> 4);
-            tx_buffer[5] = state.triggers.l;
-            tx_buffer[6] = state.triggers.r;
-            tx_buffer[7] = 0x00;
+            length = 8;
+            buf[0] = state.buttons >> 8;
+            buf[1] = state.buttons & 0x00FF;
+            buf[2] = state.a_stick.x;
+            buf[3] = state.a_stick.y;
+            buf[4] = (state.c_stick.x & 0xF0) | (state.c_stick.y >> 4);
+            buf[5] = state.triggers.l;
+            buf[6] = state.triggers.r;
+            buf[7] = 0x00;
             break;
         case 0x02:
-            tx_buffer[0] = state.buttons >> 8;
-            tx_buffer[1] = state.buttons & 0x00FF;
-            tx_buffer[2] = state.a_stick.x;
-            tx_buffer[3] = state.a_stick.y;
-            tx_buffer[4] = (state.c_stick.x & 0xF0) | (state.c_stick.y >> 4);
-            tx_buffer[5] = (state.triggers.l & 0xF0) | (state.triggers.r >> 4);
-            tx_buffer[6] = 0x00;
-            tx_buffer[7] = 0x00;
+            length = 8;
+            buf[0] = state.buttons >> 8;
+            buf[1] = state.buttons & 0x00FF;
+            buf[2] = state.a_stick.x;
+            buf[3] = state.a_stick.y;
+            buf[4] = (state.c_stick.x & 0xF0) | (state.c_stick.y >> 4);
+            buf[5] = (state.triggers.l & 0xF0) | (state.triggers.r >> 4);
+            buf[6] = 0x00;
+            buf[7] = 0x00;
             break;
         case 0x03:
-            tx_buffer[0] = state.buttons >> 8;
-            tx_buffer[1] = state.buttons & 0x00FF;
-            tx_buffer[2] = state.a_stick.x;
-            tx_buffer[3] = state.a_stick.y;
-            tx_buffer[4] = state.c_stick.x;
-            tx_buffer[5] = state.c_stick.y;
-            tx_buffer[6] = state.triggers.l;
-            tx_buffer[7] = state.triggers.r;
+            length = 8;
+            buf[0] = state.buttons >> 8;
+            buf[1] = state.buttons & 0x00FF;
+            buf[2] = state.a_stick.x;
+            buf[3] = state.a_stick.y;
+            buf[4] = state.c_stick.x;
+            buf[5] = state.c_stick.y;
+            buf[6] = state.triggers.l;
+            buf[7] = state.triggers.r;
             break;
         case 0x04:
-            tx_buffer[0] = state.buttons >> 8;
-            tx_buffer[1] = state.buttons & 0x00FF;
-            tx_buffer[2] = state.a_stick.x;
-            tx_buffer[3] = state.a_stick.y;
-            tx_buffer[4] = state.c_stick.x;
-            tx_buffer[5] = state.c_stick.y;
-            tx_buffer[6] = 0x00;
-            tx_buffer[7] = 0x00;
-            break;
+            length = 8;
+            buf[0] = state.buttons >> 8;
+            buf[1] = state.buttons & 0x00FF;
+            buf[2] = state.a_stick.x;
+            buf[3] = state.a_stick.y;
+            buf[4] = state.c_stick.x;
+            buf[5] = state.c_stick.y;
+            buf[6] = 0x00;
+            buf[7] = 0x00;
         case 0x05:
-            tx_buffer[0] = state.buttons >> 8;
-            tx_buffer[1] = state.buttons & 0x00FF;
-            tx_buffer[2] = state.a_stick.x;
-            tx_buffer[3] = state.a_stick.y;
-            tx_buffer[4] = state.c_stick.x;
-            tx_buffer[5] = state.c_stick.y;
-            tx_buffer[6] = state.triggers.l;
-            tx_buffer[7] = state.triggers.r;
-            tx_buffer[8] = 0x00;
-            tx_buffer[9] = 0x00;
+            length = 10;
+            buf[0] = state.buttons >> 8;
+            buf[1] = state.buttons & 0x00FF;
+            buf[2] = state.a_stick.x;
+            buf[3] = state.a_stick.y;
+            buf[4] = state.c_stick.x;
+            buf[5] = state.c_stick.y;
+            buf[6] = state.triggers.l;
+            buf[7] = state.triggers.r;
+            buf[8] = 0x00;
+            buf[9] = 0x00;
             break;
     }
-    dma_channel_config tx_config = dma_get_channel_config(tx_dma);
-    dma_channel_configure(tx_dma, &tx_config, &pio0_hw->txf[tx_sm], tx_buffer,
-                          transfer_count, true);
+    send_data(buf, length);
 }
 
 // Read buttons
@@ -340,7 +373,8 @@ void swap_mappings() {
 
     // Get second button's mapping
     uint8_t second_mapping_index = 0;
-    for (; (second_button >> second_mapping_index) > 1; second_mapping_index++) {
+    for (; (second_button >> second_mapping_index) > 1;
+         second_mapping_index++) {
     }
     uint8_t second_mapping = state.config.mappings[second_mapping_index];
 
@@ -438,31 +472,31 @@ void analog_main() {
 
     // Apply configurations
     dma_channel_configure(ax_dma_1, &ax_dma_1_config, ax_raw,
-                          &pio1_hw->rxf[ax_sm], 0xFFFFFFFF,
+                          &pwm_pio->rxf[ax_sm], 0xFFFFFFFF,
                           true);  // Configure and start AX DMA 1
     dma_channel_configure(ax_dma_2, &ax_dma_2_config, ax_raw,
-                          &pio1_hw->rxf[ax_sm], 0xFFFFFFFF,
+                          &pwm_pio->rxf[ax_sm], 0xFFFFFFFF,
                           false);  // Configure but don't start AX DMA 2
 
     dma_channel_configure(ay_dma_1, &ay_dma_1_config, ay_raw,
-                          &pio1_hw->rxf[ay_sm], 0xFFFFFFFF,
+                          &pwm_pio->rxf[ay_sm], 0xFFFFFFFF,
                           true);  // Configure and start AY DMA 1
     dma_channel_configure(ay_dma_2, &ay_dma_2_config, ay_raw,
-                          &pio1_hw->rxf[ay_sm], 0xFFFFFFFF,
+                          &pwm_pio->rxf[ay_sm], 0xFFFFFFFF,
                           false);  // Configure but don't start AY DMA 2
 
     dma_channel_configure(cx_dma_1, &cx_dma_1_config, cx_raw,
-                          &pio1_hw->rxf[cx_sm], 0xFFFFFFFF,
+                          &pwm_pio->rxf[cx_sm], 0xFFFFFFFF,
                           true);  // Configure and start CX DMA 1
     dma_channel_configure(cx_dma_2, &cx_dma_2_config, cx_raw,
-                          &pio1_hw->rxf[cx_sm], 0xFFFFFFFF,
+                          &pwm_pio->rxf[cx_sm], 0xFFFFFFFF,
                           false);  // Configure but don't start CX DMA 2
 
     dma_channel_configure(cy_dma_1, &cy_dma_1_config, cy_raw,
-                          &pio1_hw->rxf[cy_sm], 0xFFFFFFFF,
+                          &pwm_pio->rxf[cy_sm], 0xFFFFFFFF,
                           true);  // Configure and start CY DMA 1
     dma_channel_configure(cy_dma_2, &cy_dma_2_config, cy_raw,
-                          &pio1_hw->rxf[cy_sm], 0xFFFFFFFF,
+                          &pwm_pio->rxf[cy_sm], 0xFFFFFFFF,
                           false);  // Configure but don't start CY DMA 2
 
     // Start all PWM state machines at the same time

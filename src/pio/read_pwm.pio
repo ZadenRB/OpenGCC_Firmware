@@ -12,7 +12,7 @@
 
 ; Reads PWM inputs
 ;
-; First value pushed to RX FIFO (FIFO[0]) is the `high pulse width count - 6`
+; First value pushed to RX FIFO (FIFO[0]) is the `high pulse width count - 3`
 ; Second value pushed to RX FIFO (FIFO[1]) is the `low pulse width count`
 ;
 ; (FIFO[0] + 3) / (FIFO[0] + 3 + FIFO[1]) gives the % duty cycle

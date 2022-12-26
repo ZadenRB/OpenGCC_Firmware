@@ -16,24 +16,7 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#include "hardware/flash.h"
+#include "hardware/pio.h"
+#include "pico/stdlib.h"
 
-struct controller_config {
-    uint8_t mappings[13];
-};
-
-const uint32_t CONFIG_FLASH_BASE = PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE;
-const uint32_t CONFIG_SRAM_BASE = XIP_NOCACHE_NOALLOC_BASE + CONFIG_FLASH_BASE;
-
-const uint32_t PAGES_PER_SECTOR = FLASH_SECTOR_SIZE / FLASH_PAGE_SIZE;
-const uint32_t LAST_PAGE = PAGES_PER_SECTOR - 1;
-
-const uint32_t CONFIG_SIZE = sizeof(controller_config);
-
-// Configuration - stored to flash
-uint32_t config_read_page();
-uint32_t config_write_page();
-
-controller_config load_config();
-
-void persist_config(controller_config*);
+void send_data(uint8_t buf[], uint32_t length);

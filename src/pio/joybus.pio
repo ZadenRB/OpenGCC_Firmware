@@ -1,0 +1,164 @@
+;    Copyright 2022 Zaden Ruggiero-Bouné
+;
+;    This file is part of NobGCC-SW.
+;
+;    NobGCC-SW is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+;
+;    NobGCC-SW is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+;
+;    You should have received a copy of the GNU General Public License along with NobGCC. If not, see http://www.gnu.org/licenses/.
+
+.define PUBLIC RX_SYS_IRQ 0
+.define PUBLIC TX_WAIT_IRQ 1
+.define PUBLIC RX_WAIT_IRQ 2
+
+.program joybus_rx
+
+; Handle communication from a Gamecube console to a Gamecube input device
+;
+; Listens for commands from the console and pushes them into the RX FIFO
+;
+; Sets the irq_num flag after pushing a command to FIFO so processor can handle data
+;
+; SM clock should be 8MHz
+;
+; Autopush should be configured with a threshold of 8 bits
+;
+; The ISR should be configured to shift left
+;
+; IN/WAIT pin base should be set to 0
+;
+; EXECCTRL_JMP_PIN should be set to GPIO 0
+
+.define EIGHTH_US 10
+.define THREE_US 24
+.define ONE_US 8
+
+.wrap_target
+  wait 0 pin, 0         [EIGHTH_US - 1] ; Wait for data line to go low, then wait 1.25us
+read_pin:
+  in pins, 1            [THREE_US - 1]  ; Shift the current pin value into the ISR, and wait 3us
+  jmp pin done_reading                  ; If the data line is high after 4.25us, treat it as a stop bit
+  jmp read_pin          [ONE_US - 2]    ; If the data line is low after 4.25us, read the pin 1.25us into the next bit
+done_reading:
+  mov isr, null                         ; Clear the stop bit from the ISR, reset shift counter
+  irq nowait RX_SYS_IRQ                 ; Set the RX SYS IRQ to trigger interrupt
+  irq wait RX_WAIT_IRQ                  ; Set the RX WAIT IRQ and wait for it to be cleared to start reading
+.wrap
+
+% c-sdk {
+static inline void joybus_rx_program_init(PIO pio, uint sm, uint offset, uint data_pin) {
+  // Get default config
+  pio_sm_config c = joybus_rx_program_get_default_config(offset);
+
+  // Set clock divider to 16 (run at 8MHz)
+  pio_sm_set_clkdiv(pio, sm, 16.0);
+
+  // Set ISR to shift left, autopush with an 8-bit threshold
+  sm_config_set_in_shift(&c, false, true, 8);
+
+  // Join TX & RX FIFO for RX only
+  sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
+
+  // Set in pin to the data pin
+  sm_config_set_in_pins(&c, data_pin);
+
+  // Set jump pin to the data pin
+  sm_config_set_jmp_pin(&c, data_pin);
+
+  // Connect PIO to data pin
+  pio_gpio_init(pio, data_pin);
+
+  // Set pin to input
+  pio_sm_set_consecutive_pindirs(pio, sm, data_pin, 1, false);
+  
+  // Load configuration
+  pio_sm_init(pio, sm, offset, &c);
+
+  // Start the state machine
+  pio_sm_set_enabled(pio, sm, true);
+}
+%}
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+.program joybus_tx
+
+; Handle communication from a GameCube input device to a GameCube console
+;
+; Accepts the controller state in 16-bit chunks from the TX FIFO and sends them MSB first over GPIO
+;
+; Clears the irq_num flag after sending the controller stop bit to restart the RX state machine
+;
+; SM clock should be 2 MHz
+;
+; Autopull should be configured with a threshold of 16 bits
+;
+; The OSR should be configured to shift left
+;
+; The FIFOs should be joined for TX only
+;
+; Data GPIO should be set to input, but have a value of 0
+;
+; Side set should be set to 1 bit, change pin direction of data GPIO
+
+.side_set 1 pindirs
+
+.define ONE_US 2
+.define TWO_US 4
+
+wait_to_transmit:
+  irq clear RX_WAIT_IRQ side 0              ; Clear the RX WAIT IRQ to restart the RX state machine
+  irq wait TX_WAIT_IRQ  side 0              ; Set the TX WAIT IRQ and wait for it to be cleared to begin transmitting
+.wrap_target
+transmit:
+  jmp !osre send_data   side 0              ; Transmit if the OSR isn't empty
+  nop                   side 0              ; Stay high for 1us total at the end of the last bit before sending the stop bit
+  nop                   side 1 [TWO_US - 1] ; Drive the data line low for 2us to send a stop bit
+  jmp wait_to_transmit  side 0 [ONE_US - 1] ; Let the data line high for 2us total to send a stop bit, and wait to transmit
+send_data:
+  out y, 1              side 0              ; Get the next bit from the OSR
+  jmp !y send_zero      side 1 [ONE_US - 1] ; Drive data line low for 1us at start of bit
+send_one:
+  jmp transmit          side 0 [TWO_US - 1] ; Let the data line high for 3us total to send a one
+send_zero:
+  nop                   side 1 [TWO_US - 1] ; Drive the data line low for 3us total to send a zero
+.wrap
+
+% c-sdk {
+static inline void joybus_tx_program_init(PIO pio, uint sm, uint offset, uint data_pin) {
+  // Get default config
+  pio_sm_config c = joybus_tx_program_get_default_config(offset);
+
+  // Set clock divider to 64 (run at 2MHz)
+  pio_sm_set_clkdiv(pio, sm, 64.0);
+
+  // Set OSR to shift left, autopull with an 8-bit threshold
+  sm_config_set_out_shift(&c, false, true, 8);
+
+  // Join TX & RX FIFO for TX only
+  sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+
+  // Set in pin to the data pin
+  sm_config_set_in_pins(&c, data_pin);
+
+  // Set jump pin to the data pin
+  sm_config_set_jmp_pin(&c, data_pin);
+
+  // Configure side set
+  sm_config_set_sideset_pins(&c, data_pin);
+  sm_config_set_sideset(&c, 1, false, true);
+
+  // Connect PIO to data pin
+  pio_gpio_init(pio, data_pin);
+
+  // Set pin to input
+  pio_sm_set_consecutive_pindirs(pio, sm, data_pin, 1, false);
+  
+  // Load configuration
+  pio_sm_init(pio, sm, offset, &c);
+
+  // Start the state machine
+  pio_sm_set_enabled(pio, sm, true);
+}
+%}

@@ -16,8 +16,8 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#include "common.h"
 #include "hardware/flash.h"
+#include "hardware/pio.h"
 #include "pico/time.h"
 
 #define AIRCR_Register (*((volatile uint32_t *)(PPB_BASE + 0x0ED0C)))

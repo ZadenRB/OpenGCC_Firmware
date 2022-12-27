@@ -11,7 +11,7 @@ if (TARGET tinyusb_device)
     add_executable(NobGCC)
 
     target_sources(NobGCC PRIVATE
-        src/common.h
+        src/common.hpp
         src/configuration.hpp
         src/configuration.cpp
         src/console_communication.hpp

@@ -20,23 +20,13 @@
 
 #include <stdio.h>
 
-#include <vector>
-
-#include "common.h"
+#include "common.hpp"
 #include "console_communication.hpp"
 #include "hardware/adc.h"
 #include "hardware/clocks.h"
 #include "hardware/dma.h"
-#include "hardware/gpio.h"
-#include "hardware/irq.h"
-#include "hardware/pio.h"
-#include "hardware/pll.h"
-#include "hardware/xosc.h"
 #include "joybus.pio.h"
-#include "joybus_uf2_bootloader.hpp"
-#include "pico/float.h"
 #include "pico/multicore.h"
-#include "pico/time.h"
 #include "q2x14.hpp"
 #include "read_pwm.pio.h"
 
@@ -114,146 +104,6 @@ int main() {
     }
 
     return 0;
-}
-
-// Process a request from the console
-void handle_console_request() {
-    pio_interrupt_clear(joybus_pio, RX_SYS_IRQ);
-
-    uint8_t request[8];
-    for (int i = 0; !pio_sm_is_rx_fifo_empty(joybus_pio, rx_sm) && i < 8; ++i) {
-        request[i] = (uint8_t)pio_sm_get(joybus_pio, rx_sm);
-    }
-
-    switch (request[0]) {
-        case 0xFF:
-            // TODO: reset
-        case 0x00: {
-            // Device identifier
-            uint8_t buf[3] = {0x09, 0x00, 0x03};
-            send_data(buf, 3);
-            return;
-        }
-        case 0x40:
-            if (request[1] > 0x04) {
-                request[1] = 0x00;
-            }
-            break;
-        case 0x41:
-            state.origin = 0;
-            request[1] = 0x05;
-            break;
-        case 0x42:
-            // TODO: calibrate
-        case 0x43:
-            request[1] = 0x05;
-            break;
-        case 0x44: {
-            // Firmware version X.Y.Z {X, Y, Z}
-            uint8_t buf[3] = {0x00, 0x00, 0x00};
-            send_data(buf, 3);
-            return;
-        }
-        case 0x45: {
-            uint32_t requested_firmware_size = request[1] | (request[2] << 8) |
-                                               (request[3] << 16) |
-                                               (request[4] << 24);
-            uint8_t buf[1];
-            if (requested_firmware_size <=
-                PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE) {
-                buf[0] = 0x00;
-                send_data(buf, 1);
-                joybus_uf2_bootloader_enter();
-            } else {
-                buf[0] = 0x01;
-                send_data(buf, 1);
-            }
-            return;
-        }
-        default:
-            // Continue reading if command was unknown
-            pio_interrupt_clear(joybus_pio, RX_WAIT_IRQ);
-            return;
-    }
-
-    send_mode(request[1]);
-    return;
-}
-
-// Send controller state in given mode
-void send_mode(uint8_t mode) {
-    uint8_t buf[8];
-    uint32_t length;
-    switch (mode) {
-        case 0x00:
-            length = 8;
-            buf[0] = state.buttons >> 8;
-            buf[1] = state.buttons & 0x00FF;
-            buf[2] = state.a_stick.x;
-            buf[3] = state.a_stick.y;
-            buf[4] = state.c_stick.x;
-            buf[5] = state.c_stick.y;
-            buf[6] = (state.triggers.l & 0xF0) | (state.triggers.r >> 4);
-            buf[7] = 0x00;
-            break;
-        case 0x01:
-            length = 8;
-            buf[0] = state.buttons >> 8;
-            buf[1] = state.buttons & 0x00FF;
-            buf[2] = state.a_stick.x;
-            buf[3] = state.a_stick.y;
-            buf[4] = (state.c_stick.x & 0xF0) | (state.c_stick.y >> 4);
-            buf[5] = state.triggers.l;
-            buf[6] = state.triggers.r;
-            buf[7] = 0x00;
-            break;
-        case 0x02:
-            length = 8;
-            buf[0] = state.buttons >> 8;
-            buf[1] = state.buttons & 0x00FF;
-            buf[2] = state.a_stick.x;
-            buf[3] = state.a_stick.y;
-            buf[4] = (state.c_stick.x & 0xF0) | (state.c_stick.y >> 4);
-            buf[5] = (state.triggers.l & 0xF0) | (state.triggers.r >> 4);
-            buf[6] = 0x00;
-            buf[7] = 0x00;
-            break;
-        case 0x03:
-            length = 8;
-            buf[0] = state.buttons >> 8;
-            buf[1] = state.buttons & 0x00FF;
-            buf[2] = state.a_stick.x;
-            buf[3] = state.a_stick.y;
-            buf[4] = state.c_stick.x;
-            buf[5] = state.c_stick.y;
-            buf[6] = state.triggers.l;
-            buf[7] = state.triggers.r;
-            break;
-        case 0x04:
-            length = 8;
-            buf[0] = state.buttons >> 8;
-            buf[1] = state.buttons & 0x00FF;
-            buf[2] = state.a_stick.x;
-            buf[3] = state.a_stick.y;
-            buf[4] = state.c_stick.x;
-            buf[5] = state.c_stick.y;
-            buf[6] = 0x00;
-            buf[7] = 0x00;
-        case 0x05:
-            length = 10;
-            buf[0] = state.buttons >> 8;
-            buf[1] = state.buttons & 0x00FF;
-            buf[2] = state.a_stick.x;
-            buf[3] = state.a_stick.y;
-            buf[4] = state.c_stick.x;
-            buf[5] = state.c_stick.y;
-            buf[6] = state.triggers.l;
-            buf[7] = state.triggers.r;
-            buf[8] = 0x00;
-            buf[9] = 0x00;
-            break;
-    }
-    send_data(buf, length);
 }
 
 // Read buttons

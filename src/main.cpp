@@ -16,7 +16,7 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#include "nob_gcc.hpp"
+#include "main.hpp"
 
 #include <stdio.h>
 

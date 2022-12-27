@@ -18,8 +18,8 @@ if (TARGET tinyusb_device)
         src/console_communication.cpp
         src/joybus_uf2_bootloader.hpp
         src/joybus_uf2_bootloader.cpp
-        src/nob_gcc.hpp
-        src/nob_gcc.cpp
+        src/main.hpp
+        src/main.cpp
         src/q2x14.hpp
         src/q2x14.cpp
     )

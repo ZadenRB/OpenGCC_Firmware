@@ -21,6 +21,7 @@
 #include "console_communication.hpp"
 #include "hardware/dma.h"
 #include "hardware/irq.h"
+#include "pico/time.h"
 
 uf2_block block;
 uint32_t num_blocks;
@@ -70,7 +71,8 @@ void joybus_uf2_bootloader_enter() {
     }
 
     // Reset once all blocks have been programmed
-    add_alarm_in_ms(10, reset, NULL, true);
+    sleep_ms(10);
+    reset();
 }
 
 void handle_joybus_uf2_block() {
@@ -80,7 +82,8 @@ void handle_joybus_uf2_block() {
         // Send error
         uint8_t buf[1] = {0x01};
         send_data(buf, 1);
-        add_alarm_in_ms(10, reset, NULL, true);
+        sleep_ms(10);
+        reset();
     }
 
     // Block was outside of the valid address range
@@ -89,7 +92,8 @@ void handle_joybus_uf2_block() {
         // Send error
         uint8_t buf[1] = {0x02};
         send_data(buf, 1);
-        add_alarm_in_ms(10, reset, NULL, true);
+        sleep_ms(10);
+        reset();
     }
 
     // Firmware being sent was too large
@@ -97,7 +101,8 @@ void handle_joybus_uf2_block() {
         // Send error
         uint8_t buf[1] = {0x03};
         send_data(buf, 1);
-        add_alarm_in_ms(10, reset, NULL, true);
+        sleep_ms(10);
+        reset();
     }
 
     // Number of blocks changed
@@ -105,7 +110,8 @@ void handle_joybus_uf2_block() {
         // Send error
         uint8_t buf[1] = {0x04};
         send_data(buf, 1);
-        add_alarm_in_ms(10, reset, NULL, true);
+        sleep_ms(10);
+        reset();
     }
 
     // Block contained the UF2_FLAG_NOT_MAIN_FLASH marking
@@ -113,7 +119,8 @@ void handle_joybus_uf2_block() {
         // Send error
         uint8_t buf[1] = {0x05};
         send_data(buf, 1);
-        add_alarm_in_ms(10, reset, NULL, true);
+        sleep_ms(10);
+        reset();
     }
 
     // Handle valid block
@@ -147,7 +154,4 @@ void handle_joybus_uf2_block() {
 }
 
 // Run the handler function for a combo
-int64_t reset(alarm_id_t alarm_id, void *user_data) {
-    AIRCR_Register = 0x5FA0004;
-    return 0;
-}
+void reset() { AIRCR_Register = 0x5FA0004; }

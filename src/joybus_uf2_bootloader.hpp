@@ -18,7 +18,6 @@
 
 #include "hardware/flash.h"
 #include "hardware/pio.h"
-#include "pico/time.h"
 
 #define AIRCR_Register (*((volatile uint32_t *)(PPB_BASE + 0x0ED0C)))
 
@@ -44,4 +43,4 @@ struct uf2_block {
 void joybus_uf2_bootloader_init(PIO joybus_pio, uint rx_sm);
 void joybus_uf2_bootloader_enter();
 void handle_joybus_uf2_block();
-int64_t reset(alarm_id_t alarm_id, void *user_data);
+void reset();

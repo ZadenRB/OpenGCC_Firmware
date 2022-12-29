@@ -54,6 +54,10 @@ controller_config load_config() {
         config.mappings[10] = 0b1010;
         config.mappings[11] = 0b1011;
         config.mappings[12] = 0b1100;
+        config.l_trigger_mode = both;
+        config.l_trigger_threshold_value = TRIGGER_THRESHOLD_MIN;
+        config.r_trigger_mode = both;
+        config.r_trigger_threshold_value = TRIGGER_THRESHOLD_MIN;
         persist_config(&config);
         return config;
     }

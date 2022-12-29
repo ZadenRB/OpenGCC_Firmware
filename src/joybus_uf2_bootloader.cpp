@@ -27,6 +27,7 @@ uf2_block block;
 uint32_t num_blocks;
 uint32_t blocks_programmed;
 bool erased[4096];
+int dma_channel = -1;
 
 void joybus_uf2_bootloader_init(PIO joybus_pio, uint rx_sm, uint sm, uint dma) {
     // IRQ
@@ -37,31 +38,26 @@ void joybus_uf2_bootloader_init(PIO joybus_pio, uint rx_sm, uint sm, uint dma) {
     irq_set_exclusive_handler(PIO0_IRQ_0, handle_joybus_uf2_block);
 
     // DMA
-    int dma_channel_1 = dma_claim_unused_channel(true);
-    int dma_channel_2 = dma_claim_unused_channel(true);
+    if (dma_channel == -1) {
+        dma_channel = dma_claim_unused_channel(true);
+    } else {
+        dma_channel_abort(dma_channel);
+    }
 
-    dma_channel_config dma_base_config =
-        dma_channel_get_default_config(dma_channel_1);
-
-    channel_config_set_read_increment(&dma_base_config, false);
-    channel_config_set_write_increment(&dma_base_config, true);
-    channel_config_set_transfer_data_size(&dma_base_config, DMA_SIZE_8);
-    channel_config_set_ring(&dma_base_config, true, 9);
-    channel_config_set_dreq(&dma_base_config,
+    dma_channel_config dma_config = dma_channel_get_default_config(dma_channel);
+    channel_config_set_read_increment(&dma_config, false); // Always read from same address
+    channel_config_set_write_increment(&dma_config, true); // Increment write address
+    channel_config_set_transfer_data_size(&dma_config, DMA_SIZE_8);
+    channel_config_set_ring(&dma_config, true, 9); // Wrap after 512 bytes
+    channel_config_set_dreq(&dma_config,
                             pio_get_dreq(joybus_pio, rx_sm, false));
+    channel_config_set_chain_to(&dma_config, dma_channel);
 
-    dma_channel_config dma_config_1 = dma_base_config;
-    dma_channel_config dma_config_2 = dma_base_config;
-
-    channel_config_set_chain_to(&dma_config_1, dma_channel_2);
-    channel_config_set_chain_to(&dma_config_2, dma_channel_1);
-
-    dma_channel_configure(dma_channel_1, &dma_config_1, &block,
+    // Start DMA
+    dma_channel_configure(dma_channel, &dma_config, &block,
                           &joybus_pio->rxf[rx_sm], 0xFFFFFFFF, true);
-    dma_channel_configure(dma_channel_2, &dma_config_2, &block,
-                          &joybus_pio->rxf[rx_sm], 0xFFFFFFFF, false);
 
-    // Variables
+    // Reset variables
     num_blocks = 0;
     blocks_programmed = 0;
 }

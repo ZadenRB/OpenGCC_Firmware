@@ -17,11 +17,14 @@
 */
 
 #include "pico/stdlib.h"
+#include "common.hpp"
 
 /* Core 0 */
 inline void read_digital(uint16_t physical_buttons);
 inline void remap(uint16_t physical_buttons, uint16_t *remapped_buttons,
                   uint8_t to_remap, uint8_t mapping);
+inline void apply_trigger_mode_digital(uint16_t *buttons, uint8_t bit_to_set, trigger_mode mode, trigger_mode other_mode);
+
 // Combos
 inline void check_combos(uint32_t physical_buttons);
 inline int64_t execute_combo(alarm_id_t alarm_id, void *user_data);
@@ -30,5 +33,6 @@ void swap_mappings();
 
 /* Core 1 */
 void analog_main();
-inline void read_triggers();
+inline void read_triggers(uint8_t triggers_raw[]);
+inline void apply_trigger_mode_analog(uint8_t *out, uint8_t analog_value, uint8_t threshold_value, bool digital_value, bool enable_analog, trigger_mode mode, trigger_mode other_mode);
 inline void read_sticks(int ax_raw[], int ay_raw[], int cx_raw[], int cy_raw[]);

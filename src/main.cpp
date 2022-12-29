@@ -20,7 +20,8 @@
 
 #include <stdio.h>
 
-#include "common.hpp"
+#include <cmath>
+
 #include "console_communication.hpp"
 #include "hardware/adc.h"
 #include "hardware/clocks.h"
@@ -75,11 +76,10 @@ int main() {
     channel_config_set_dreq(&tx_config, pio_get_dreq(joybus_pio, tx_sm, true));
     dma_channel_set_config(tx_dma, &tx_config, false);
 
-    // Start analog setup
-    multicore_launch_core1(analog_main);
-
     // Load configuration
     state.config = load_config();
+    state.lt_is_jump = ((1 << state.config.mappings[6]) & JUMP_MASK) != 0;
+    state.rt_is_jump = ((1 << state.config.mappings[5]) & JUMP_MASK) != 0;
 
     gpio_pull_up(DPAD_LEFT);
     gpio_pull_up(DPAD_RIGHT);
@@ -93,6 +93,9 @@ int main() {
     gpio_pull_up(X);
     gpio_pull_up(Y);
     gpio_pull_up(START);
+
+    // Start analog setup
+    multicore_launch_core1(analog_main);
 
     uint32_t raw_input;
     uint16_t physical_buttons;
@@ -109,25 +112,35 @@ int main() {
 // Read buttons
 inline void read_digital(uint16_t physical_buttons) {
     uint16_t remapped_buttons = (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
-    remap(physical_buttons, &remapped_buttons, DPAD_LEFT,
-          state.config.mappings[0]);
-    remap(physical_buttons, &remapped_buttons, DPAD_RIGHT,
-          state.config.mappings[1]);
-    remap(physical_buttons, &remapped_buttons, DPAD_DOWN,
-          state.config.mappings[2]);
-    remap(physical_buttons, &remapped_buttons, DPAD_UP,
-          state.config.mappings[3]);
-    remap(physical_buttons, &remapped_buttons, Z, state.config.mappings[4]);
-    remap(physical_buttons, &remapped_buttons, RT_DIGITAL,
-          state.config.mappings[5]);
-    remap(physical_buttons, &remapped_buttons, LT_DIGITAL,
-          state.config.mappings[6]);
-    remap(physical_buttons, &remapped_buttons, A, state.config.mappings[8]);
-    remap(physical_buttons, &remapped_buttons, B, state.config.mappings[9]);
-    remap(physical_buttons, &remapped_buttons, X, state.config.mappings[10]);
-    remap(physical_buttons, &remapped_buttons, Y, state.config.mappings[11]);
     remap(physical_buttons, &remapped_buttons, START,
           state.config.mappings[12]);
+    remap(physical_buttons, &remapped_buttons, Y, state.config.mappings[11]);
+    remap(physical_buttons, &remapped_buttons, X, state.config.mappings[10]);
+    remap(physical_buttons, &remapped_buttons, B, state.config.mappings[9]);
+    remap(physical_buttons, &remapped_buttons, A, state.config.mappings[8]);
+    remap(physical_buttons, &remapped_buttons, LT_DIGITAL,
+          state.config.mappings[6]);
+    remap(physical_buttons, &remapped_buttons, RT_DIGITAL,
+          state.config.mappings[5]);
+    remap(physical_buttons, &remapped_buttons, Z, state.config.mappings[4]);
+    remap(physical_buttons, &remapped_buttons, DPAD_UP,
+          state.config.mappings[3]);
+    remap(physical_buttons, &remapped_buttons, DPAD_DOWN,
+          state.config.mappings[2]);
+    remap(physical_buttons, &remapped_buttons, DPAD_RIGHT,
+          state.config.mappings[1]);
+    remap(physical_buttons, &remapped_buttons, DPAD_LEFT,
+          state.config.mappings[0]);
+
+    state.lt_pressed = (remapped_buttons & (1 << LT_DIGITAL)) != 0;
+    state.rt_pressed = (remapped_buttons & (1 << RT_DIGITAL)) != 0;
+
+    apply_trigger_mode_digital(&remapped_buttons, LT_DIGITAL,
+                               state.config.l_trigger_mode,
+                               state.config.r_trigger_mode);
+    apply_trigger_mode_digital(&remapped_buttons, RT_DIGITAL,
+                               state.config.r_trigger_mode,
+                               state.config.l_trigger_mode);
 
     state.buttons = remapped_buttons;
 }
@@ -138,6 +151,25 @@ inline void remap(uint16_t physical_buttons, uint16_t *remapped_buttons,
     uint16_t mask = ~(1 << mapping);
     bool pressed = (physical_buttons & (1 << to_remap)) != 0;
     *remapped_buttons = (*remapped_buttons & mask) | (pressed << mapping);
+}
+
+// Modify digital value based on the trigger mode
+inline void apply_trigger_mode_digital(uint16_t *buttons, uint8_t bit_to_set,
+                                       trigger_mode mode,
+                                       trigger_mode other_mode) {
+    switch (mode) {
+        case both:
+        case trigger_plug:
+        case analog_multiplied:
+            if (other_mode == analog_on_digital) {
+                *buttons = *buttons & ~(1 << bit_to_set);
+            }
+            break;
+        case analog_only:
+        case analog_on_digital:
+            *buttons = *buttons & ~(1 << bit_to_set);
+            break;
+    }
 }
 
 // Check if any button combos are being pressed
@@ -196,7 +228,7 @@ void swap_mappings() {
 
     // Wait for first button press
     uint32_t first_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
-    for (; !((first_button != 0) && ((first_button & (first_button - 1)) == 0));
+    for (; !(first_button != 0 && (first_button & (first_button - 1)) == 0);
          first_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK) {
     }
 
@@ -208,8 +240,8 @@ void swap_mappings() {
 
     // Wait for second button press
     uint32_t second_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
-    for (; !((second_button != 0) &&
-             ((second_button & (second_button - 1)) == 0));
+    for (; !(second_button != 0 && (second_button & (second_button - 1)) == 0 &&
+             second_button != first_button);
          second_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK) {
     }
 
@@ -352,19 +384,113 @@ void analog_main() {
     // Start all PWM state machines at the same time
     pio_enable_sm_mask_in_sync(pwm_pio, 0xF);
 
+    // Configure ADC
+    adc_gpio_init(LT_ANALOG);
+    adc_gpio_init(RT_ANALOG);
+    adc_set_clkdiv(0);
+    adc_select_input(LT_ANALOG_ADC_INPUT);
+    adc_set_round_robin(TRIGGER_ADC_MASK);
+    adc_fifo_setup(true, true, 1, false, true);
+
+    // ADC data destination
+    uint8_t triggers_raw[2];
+
+    // Claim ADC DMA channels
+    uint triggers_dma_1 = dma_claim_unused_channel(true);
+    uint triggers_dma_2 = dma_claim_unused_channel(true);
+
+    // Setup base configuration
+    dma_channel_config triggers_base_config =
+        dma_channel_get_default_config(triggers_dma_1);
+    channel_config_set_read_increment(&triggers_base_config,
+                                      false);  // Always read from same address
+    channel_config_set_write_increment(&triggers_base_config,
+                                       true);  // Increment write address
+    channel_config_set_transfer_data_size(&triggers_base_config, DMA_SIZE_16);
+    channel_config_set_ring(&triggers_base_config, true,
+                            3);  // Wrap after 8 bytes
+    channel_config_set_dreq(&triggers_base_config, DREQ_ADC);
+
+    // Setup channel specific configurations
+    dma_channel_config triggers_config_1 = triggers_base_config;
+    channel_config_set_chain_to(&triggers_config_1, triggers_dma_2);
+    dma_channel_config triggers_config_2 = triggers_base_config;
+    channel_config_set_chain_to(&triggers_config_2, triggers_dma_1);
+
+    // Apply configurations
+    dma_channel_configure(triggers_dma_1, &triggers_config_1, triggers_raw,
+                          &adc_hw->fifo, 0xFFFFFFFF, true);
+    dma_channel_configure(triggers_dma_2, &triggers_config_2, triggers_raw,
+                          &adc_hw->fifo, 0xFFFFFFFF, false);
+
+    // Start ADC
+    adc_run(true);
+
     while (1) {
-        read_triggers();
+        read_triggers(triggers_raw);
         read_sticks(ax_raw, ay_raw, cx_raw, cy_raw);
     }
 }
 
-inline void read_triggers() {
-    adc_select_input(0);
-    uint16_t lt = adc_read();
-    adc_select_input(1);
-    uint16_t rt = adc_read();
-    state.triggers.l = lt;
-    state.triggers.r = rt;
+// Read analog triggers & apply analog trigger modes
+inline void read_triggers(uint8_t triggers_raw[]) {
+    uint8_t lt_raw = triggers_raw[0];
+    uint8_t rt_raw = triggers_raw[1];
+    apply_trigger_mode_analog(
+        &state.triggers.l, lt_raw, state.config.l_trigger_threshold_value,
+        state.lt_pressed, !state.lt_is_jump, state.config.l_trigger_mode,
+        state.config.r_trigger_mode);
+    apply_trigger_mode_analog(
+        &state.triggers.r, rt_raw, state.config.r_trigger_threshold_value,
+        state.rt_pressed, !state.rt_is_jump, state.config.r_trigger_mode,
+        state.config.l_trigger_mode);
+}
+
+// Modify analog value based on the trigger mode
+inline void apply_trigger_mode_analog(uint8_t *out, uint8_t analog_value,
+                                      uint8_t threshold_value,
+                                      bool digital_value, bool enable_analog,
+                                      trigger_mode mode,
+                                      trigger_mode other_mode) {
+    switch (mode) {
+        case digital_only:
+            *out = 0;
+            break;
+        case both:
+        case analog_only:
+            if (other_mode == analog_on_digital) {
+                *out = 0;
+            } else {
+                *out = analog_value * enable_analog;
+            }
+            break;
+        case trigger_plug:
+            if (other_mode == analog_on_digital) {
+                *out = 0;
+            } else if (analog_value > threshold_value) {
+                *out = threshold_value * enable_analog;
+            } else {
+                *out = analog_value * enable_analog;
+            }
+            break;
+        case analog_on_digital:
+        case both_on_digital:
+            *out = threshold_value * digital_value * enable_analog;
+            break;
+        case analog_multiplied:
+            if (other_mode == analog_on_digital) {
+                *out = 0;
+            } else {
+                float multiplier = (threshold_value * 0.01124f) + 0.44924f;
+                float multiplied_value = round(analog_value * multiplier);
+                if (multiplied_value > 255) {
+                    *out = 255 * enable_analog;
+                } else {
+                    *out = static_cast<uint8_t>(multiplied_value) * enable_analog;
+                }
+            }
+            break;
+    }
 }
 
 inline void read_sticks(int ax_raw[], int ay_raw[], int cx_raw[],

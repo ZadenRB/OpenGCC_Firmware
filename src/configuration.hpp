@@ -18,8 +18,24 @@
 
 #include "hardware/flash.h"
 
+enum trigger_mode {
+    both,
+    digital_only,
+    analog_only,
+    trigger_plug,
+    analog_on_digital,
+    both_on_digital,
+    analog_multiplied
+};
+const uint8_t TRIGGER_THRESHOLD_MIN = 49;
+const uint8_t TRIGGER_THRESHOLD_MAX = 227;
+
 struct controller_config {
     uint8_t mappings[13];
+    trigger_mode l_trigger_mode;
+    uint8_t l_trigger_threshold_value;
+    trigger_mode r_trigger_mode;
+    uint8_t r_trigger_threshold_value;
 };
 
 const uint32_t CONFIG_FLASH_BASE = PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE;

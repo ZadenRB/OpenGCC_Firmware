@@ -38,15 +38,21 @@ const int CX = 14;
 const int DATA = 18;
 const int AY = 24;
 const int AX = 25;
-
+const int LT_ANALOG = 26;
+const int RT_ANALOG = 27;
+const int LT_ANALOG_ADC_INPUT = LT_ANALOG - 26;
+const int RT_ANALOG_ADC_INPUT = RT_ANALOG - 26;
 // Origin bit
 const int ALWAYS_HIGH = 7;
 const int ORIGIN = 13;
 
-const uint32_t PHYSICAL_BUTTONS_MASK =
+const uint16_t PHYSICAL_BUTTONS_MASK =
     (1 << DPAD_LEFT) | (1 << DPAD_RIGHT) | (1 << DPAD_DOWN) | (1 << DPAD_UP) |
     (1 << Z) | (1 << RT_DIGITAL) | (1 << LT_DIGITAL) | (1 << A) | (1 << B) |
     (1 << X) | (1 << Y) | (1 << START);
+const uint16_t JUMP_MASK = (1 << X) | (1 << Y);
+const uint TRIGGER_ADC_MASK =
+    (1 << LT_ANALOG_ADC_INPUT) | (1 << RT_ANALOG_ADC_INPUT);
 
 struct stick {
     uint8_t x;
@@ -60,7 +66,11 @@ struct trigger {
 
 // State - in memory
 struct controller_state {
-    uint16_t buttons;
+    uint16_t buttons = 0;
+    bool lt_pressed = false;
+    bool lt_is_jump;
+    bool rt_pressed = false;
+    bool rt_is_jump;
     stick a_stick;
     stick c_stick;
     trigger triggers;

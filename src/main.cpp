@@ -110,7 +110,7 @@ int main() {
 }
 
 // Read buttons
-inline void read_digital(uint16_t physical_buttons) {
+void read_digital(uint16_t physical_buttons) {
     uint16_t remapped_buttons = (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
     remap(physical_buttons, &remapped_buttons, START,
           state.config.mappings[12]);
@@ -146,7 +146,7 @@ inline void read_digital(uint16_t physical_buttons) {
 }
 
 // Update remapped_buttons based on a physical button and its mapping
-inline void remap(uint16_t physical_buttons, uint16_t *remapped_buttons,
+void remap(uint16_t physical_buttons, uint16_t *remapped_buttons,
                   uint8_t to_remap, uint8_t mapping) {
     uint16_t mask = ~(1 << mapping);
     bool pressed = (physical_buttons & (1 << to_remap)) != 0;
@@ -154,7 +154,7 @@ inline void remap(uint16_t physical_buttons, uint16_t *remapped_buttons,
 }
 
 // Modify digital value based on the trigger mode
-inline void apply_trigger_mode_digital(uint16_t *buttons, uint8_t bit_to_set,
+void apply_trigger_mode_digital(uint16_t *buttons, uint8_t bit_to_set,
                                        trigger_mode mode,
                                        trigger_mode other_mode) {
     switch (mode) {
@@ -173,7 +173,7 @@ inline void apply_trigger_mode_digital(uint16_t *buttons, uint8_t bit_to_set,
 }
 
 // Check if any button combos are being pressed
-inline void check_combos(uint32_t physical_buttons) {
+void check_combos(uint32_t physical_buttons) {
     // Check if the active combo is still being pressed
     if (state.active_combo != 0) {
         if (state.active_combo == physical_buttons) {
@@ -433,7 +433,7 @@ void analog_main() {
 }
 
 // Read analog triggers & apply analog trigger modes
-inline void read_triggers(uint8_t triggers_raw[]) {
+void read_triggers(uint8_t triggers_raw[]) {
     uint8_t lt_raw = triggers_raw[0];
     uint8_t rt_raw = triggers_raw[1];
     apply_trigger_mode_analog(
@@ -447,7 +447,7 @@ inline void read_triggers(uint8_t triggers_raw[]) {
 }
 
 // Modify analog value based on the trigger mode
-inline void apply_trigger_mode_analog(uint8_t *out, uint8_t analog_value,
+void apply_trigger_mode_analog(uint8_t *out, uint8_t analog_value,
                                       uint8_t threshold_value,
                                       bool digital_value, bool enable_analog,
                                       trigger_mode mode,
@@ -493,7 +493,7 @@ inline void apply_trigger_mode_analog(uint8_t *out, uint8_t analog_value,
     }
 }
 
-inline void read_sticks(int ax_raw[], int ay_raw[], int cx_raw[],
+void read_sticks(int ax_raw[], int ay_raw[], int cx_raw[],
                         int cy_raw[]) {
     int ax_high_total = 0;
     int ax_low_total = 0;

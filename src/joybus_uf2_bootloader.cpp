@@ -45,10 +45,12 @@ void joybus_uf2_bootloader_init(PIO joybus_pio, uint rx_sm, uint sm, uint dma) {
     }
 
     dma_channel_config dma_config = dma_channel_get_default_config(dma_channel);
-    channel_config_set_read_increment(&dma_config, false); // Always read from same address
-    channel_config_set_write_increment(&dma_config, true); // Increment write address
+    channel_config_set_read_increment(&dma_config,
+                                      false);  // Always read from same address
+    channel_config_set_write_increment(&dma_config,
+                                       true);  // Increment write address
     channel_config_set_transfer_data_size(&dma_config, DMA_SIZE_8);
-    channel_config_set_ring(&dma_config, true, 9); // Wrap after 512 bytes
+    channel_config_set_ring(&dma_config, true, 9);  // Wrap after 512 bytes
     channel_config_set_dreq(&dma_config,
                             pio_get_dreq(joybus_pio, rx_sm, false));
     channel_config_set_chain_to(&dma_config, dma_channel);

@@ -16,14 +16,15 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#include "pico/stdlib.h"
 #include "common.hpp"
+#include "pico/stdlib.h"
 
 /* Core 0 */
 void read_digital(uint16_t physical_buttons);
 void remap(uint16_t physical_buttons, uint16_t *remapped_buttons,
-                  uint8_t to_remap, uint8_t mapping);
-void apply_trigger_mode_digital(uint16_t *buttons, uint8_t bit_to_set, trigger_mode mode, trigger_mode other_mode);
+           uint8_t to_remap, uint8_t mapping);
+void apply_trigger_mode_digital(uint16_t *buttons, uint8_t bit_to_set,
+                                trigger_mode mode, trigger_mode other_mode);
 
 // Combos
 void check_combos(uint32_t physical_buttons);
@@ -35,5 +36,8 @@ void change_trigger_config();
 /* Core 1 */
 void analog_main();
 void read_triggers(uint8_t triggers_raw[]);
-void apply_trigger_mode_analog(uint8_t *out, uint8_t analog_value, uint8_t threshold_value, bool digital_value, bool enable_analog, trigger_mode mode, trigger_mode other_mode);
+void apply_trigger_mode_analog(uint8_t *out, uint8_t analog_value,
+                               uint8_t threshold_value, bool digital_value,
+                               bool enable_analog, trigger_mode mode,
+                               trigger_mode other_mode);
 void read_sticks(int ax_raw[], int ay_raw[], int cx_raw[], int cy_raw[]);

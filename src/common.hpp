@@ -96,3 +96,5 @@ extern PIO joybus_pio;
 extern uint tx_sm;
 extern uint rx_sm;
 extern uint tx_dma;
+
+const int INTERCORE_SIGNAL = 0x623F16E4;

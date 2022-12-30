@@ -43,6 +43,19 @@ int main() {
     // Configure system PLL to 128 MHZ
     set_sys_clock_pll(1536 * MHZ, 6, 2);
 
+    // Launch analog on core 1
+    multicore_launch_core1(analog_main);
+
+    // Wait for core 1 push to the intercore FIFO, signaling core 0 to proceed
+    //
+    // We don't use the provided multicore_lockout_* functions for this because
+    // it would be a race condition for core 1 to launch and interrupt core 0
+    // before core 0 enables the RX IRQ
+    for (uint32_t val = multicore_fifo_pop_blocking(); val != INTERCORE_SIGNAL;
+         val = multicore_fifo_pop_blocking()) {
+        tight_loop_contents();
+    }
+
     // Remove in release
     stdio_init_all();
 
@@ -92,9 +105,6 @@ int main() {
     gpio_pull_up(X);
     gpio_pull_up(Y);
     gpio_pull_up(START);
-
-    // Start analog setup
-    multicore_launch_core1(analog_main);
 
     uint32_t raw_input;
     uint16_t physical_buttons;
@@ -232,16 +242,19 @@ void toggle_safe_mode() { state.safe_mode = !state.safe_mode; }
 void swap_mappings() {
     // Wait for all buttons to be released
     while ((~gpio_get_all() & PHYSICAL_BUTTONS_MASK) != 0) {
+        tight_loop_contents();
     }
 
     // Wait for first button press
     uint32_t first_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
     for (; !(first_button != 0 && (first_button & (first_button - 1)) == 0);
          first_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK) {
+        tight_loop_contents();
     }
 
     // Wait for all buttons to be released
     while ((~gpio_get_all() & PHYSICAL_BUTTONS_MASK) != 0) {
+        tight_loop_contents();
     }
 
     // Wait for second button press
@@ -249,11 +262,13 @@ void swap_mappings() {
     for (; !(second_button != 0 && (second_button & (second_button - 1)) == 0 &&
              second_button != first_button);
          second_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK) {
+        tight_loop_contents();
     }
 
     // Get first button's mapping
     uint8_t first_mapping_index = 0;
     for (; (first_button >> first_mapping_index) > 1; first_mapping_index++) {
+        tight_loop_contents();
     }
     uint8_t first_mapping = state.config.mappings[first_mapping_index];
 
@@ -261,6 +276,7 @@ void swap_mappings() {
     uint8_t second_mapping_index = 0;
     for (; (second_button >> second_mapping_index) > 1;
          second_mapping_index++) {
+        tight_loop_contents();
     }
     uint8_t second_mapping = state.config.mappings[second_mapping_index];
 
@@ -294,7 +310,8 @@ void change_trigger_config() {
             physical_buttons & ((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
         if (trigger_pressed != 0 &&
             (trigger_pressed & (trigger_pressed - 1)) == 0) {
-            // If one (and only one) trigger is pressed, set it's mode & offset as the values to change
+            // If one (and only one) trigger is pressed, set it's mode & offset
+            // as the values to change
             trigger_mode *mode;
             uint8_t *offset;
             if (trigger_pressed == (1 << LT_DIGITAL)) {
@@ -341,7 +358,8 @@ void change_trigger_config() {
                     *offset = *offset - 10U;
                     break;
                 default:
-                    // If no valid combo was pressed, reset last combo and counter to avoid throttling
+                    // If no valid combo was pressed, reset last combo and
+                    // counter to avoid throttling
                     last_combo = 0;
                     same_combo_count = 0;
                     break;
@@ -523,6 +541,12 @@ void analog_main() {
 
     // Start ADC
     adc_run(true);
+
+    // Allow core 0 to continue (start responding to console polls) after
+    // reading analog inputs once
+    read_triggers(triggers_raw);
+    read_sticks(ax_raw, ay_raw, cx_raw, cy_raw);
+    multicore_fifo_push_blocking(INTERCORE_SIGNAL);
 
     while (1) {
         read_triggers(triggers_raw);

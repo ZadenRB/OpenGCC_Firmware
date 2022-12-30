@@ -79,6 +79,7 @@ int main() {
     state.lt_is_jump = ((1 << state.config.mappings[6]) & JUMP_MASK) != 0;
     state.rt_is_jump = ((1 << state.config.mappings[5]) & JUMP_MASK) != 0;
 
+    // Set pull up
     gpio_pull_up(DPAD_LEFT);
     gpio_pull_up(DPAD_RIGHT);
     gpio_pull_up(DPAD_DOWN);
@@ -109,7 +110,10 @@ int main() {
 
 // Read buttons
 void read_digital(uint16_t physical_buttons) {
+    // Output sent to console
     uint16_t remapped_buttons = (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
+
+    // Apply remaps
     remap(physical_buttons, &remapped_buttons, START,
           state.config.mappings[12]);
     remap(physical_buttons, &remapped_buttons, Y, state.config.mappings[11]);
@@ -130,9 +134,11 @@ void read_digital(uint16_t physical_buttons) {
     remap(physical_buttons, &remapped_buttons, DPAD_LEFT,
           state.config.mappings[0]);
 
+    // If triggers are pressed (post remapping)
     state.lt_pressed = (remapped_buttons & (1 << LT_DIGITAL)) != 0;
     state.rt_pressed = (remapped_buttons & (1 << RT_DIGITAL)) != 0;
 
+    // Apply digital trigger modes
     apply_trigger_mode_digital(&remapped_buttons, LT_DIGITAL,
                                state.config.l_trigger_mode,
                                state.config.r_trigger_mode);
@@ -140,6 +146,7 @@ void read_digital(uint16_t physical_buttons) {
                                state.config.r_trigger_mode,
                                state.config.l_trigger_mode);
 
+    // Update state
     state.buttons = remapped_buttons;
 }
 
@@ -264,19 +271,30 @@ void swap_mappings() {
 
 // Change trigger modes & offsets
 void change_trigger_config() {
+    // Lock core 1 to prevent analog trigger output from being displayed
     multicore_lockout_start_blocking();
+
+    // Initialize variables
+    uint32_t last_combo = 0;
+    uint32_t same_combo_count = 0;
+
     while (true) {
+        // Get buttons
         uint32_t physical_buttons = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
+
+        // If exit combo is pressed, unlock core 1, save changes, and exit
         if (physical_buttons == (1 << START) | (1 << B) | (1 << Z)) {
             multicore_lockout_end_blocking();
             persist_config(&state.config);
             return;
         }
 
+        // Mask out non-trigger buttons
         uint32_t trigger_pressed =
             physical_buttons & ((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
         if (trigger_pressed != 0 &&
             (trigger_pressed & (trigger_pressed - 1)) == 0) {
+            // If one (and only one) trigger is pressed, set it's mode & offset as the values to change
             trigger_mode *mode;
             uint8_t *offset;
             if (trigger_pressed == (1 << LT_DIGITAL)) {
@@ -287,11 +305,25 @@ void change_trigger_config() {
                 offset = &state.config.r_trigger_threshold_value;
             }
 
-            state.triggers.l = *mode;
-            state.triggers.r = *offset;
+            // Mask out trigger buttons
+            uint32_t combo =
+                physical_buttons & ~((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
+            if (combo != 0 && combo == last_combo) {
+                // If the same buttons are pressed, increment count
+                ++same_combo_count;
 
-            switch (physical_buttons &
-                    ~((1 << LT_DIGITAL) | (1 << RT_DIGITAL))) {
+                // Throttle for 500ms initially, then 200ms
+                sleep_ms(same_combo_count > 1 ? 200 : 500);
+            } else {
+                // Otherwise reset count
+                same_combo_count = 0;
+            }
+
+            // Set last combo to current combo
+            last_combo = combo;
+
+            // Update mode/offset based on combo
+            switch (combo) {
                 case (1 << A):
                     *mode = static_cast<trigger_mode>((*mode + 1) %
                                                       (last_trigger_mode + 1));
@@ -308,10 +340,22 @@ void change_trigger_config() {
                 case (1 << DPAD_LEFT):
                     *offset = *offset - 10U;
                     break;
+                default:
+                    // If no valid combo was pressed, reset last combo and counter to avoid throttling
+                    last_combo = 0;
+                    same_combo_count = 0;
+                    break;
             }
+
+            // Display mode on left trigger & offset on right trigger
+            state.triggers.l = *mode;
+            state.triggers.r = *offset;
         } else {
+            // Otherwise reset last combo and counter, and display nothing
             state.triggers.l = 0;
             state.triggers.r = 0;
+            last_combo = 0;
+            same_combo_count = 0;
         }
     }
 }

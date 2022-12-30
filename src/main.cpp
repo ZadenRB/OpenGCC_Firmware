@@ -18,8 +18,6 @@
 
 #include "main.hpp"
 
-#include <stdio.h>
-
 #include <cmath>
 
 #include "console_communication.hpp"
@@ -99,7 +97,7 @@ int main() {
 
     uint32_t raw_input;
     uint16_t physical_buttons;
-    while (1) {
+    while (true) {
         raw_input = ~gpio_get_all();
         physical_buttons = (raw_input & PHYSICAL_BUTTONS_MASK);
         read_digital(physical_buttons);
@@ -147,7 +145,7 @@ void read_digital(uint16_t physical_buttons) {
 
 // Update remapped_buttons based on a physical button and its mapping
 void remap(uint16_t physical_buttons, uint16_t *remapped_buttons,
-                  uint8_t to_remap, uint8_t mapping) {
+           uint8_t to_remap, uint8_t mapping) {
     uint16_t mask = ~(1 << mapping);
     bool pressed = (physical_buttons & (1 << to_remap)) != 0;
     *remapped_buttons = (*remapped_buttons & mask) | (pressed << mapping);
@@ -155,8 +153,7 @@ void remap(uint16_t physical_buttons, uint16_t *remapped_buttons,
 
 // Modify digital value based on the trigger mode
 void apply_trigger_mode_digital(uint16_t *buttons, uint8_t bit_to_set,
-                                       trigger_mode mode,
-                                       trigger_mode other_mode) {
+                                trigger_mode mode, trigger_mode other_mode) {
     switch (mode) {
         case both:
         case trigger_plug:
@@ -195,6 +192,7 @@ void check_combos(uint32_t physical_buttons) {
     if (!state.safe_mode) {
         switch (physical_buttons) {
             case (1 << START) | (1 << B) | (1 << A):
+            case (1 << START) | (1 << A) | (1 << Z):
                 state.active_combo = physical_buttons;
                 state.combo_alarm =
                     add_alarm_in_ms(3000, execute_combo, NULL, false);
@@ -211,6 +209,9 @@ int64_t execute_combo(alarm_id_t alarm_id, void *user_data) {
             break;
         case (1 << START) | (1 << B) | (1 << A):
             swap_mappings();
+            break;
+        case (1 << START) | (1 << A) | (1 << Z):
+            change_trigger_config();
             break;
     }
     state.active_combo = 0;
@@ -232,8 +233,6 @@ void swap_mappings() {
          first_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK) {
     }
 
-    printf("First button: %d\n", first_button);
-
     // Wait for all buttons to be released
     while ((~gpio_get_all() & PHYSICAL_BUTTONS_MASK) != 0) {
     }
@@ -244,8 +243,6 @@ void swap_mappings() {
              second_button != first_button);
          second_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK) {
     }
-
-    printf("Second button: %d\n", second_button);
 
     // Get first button's mapping
     uint8_t first_mapping_index = 0;
@@ -265,7 +262,64 @@ void swap_mappings() {
     persist_config(&state.config);
 }
 
+// Change trigger modes & offsets
+void change_trigger_config() {
+    multicore_lockout_start_blocking();
+    while (true) {
+        uint32_t physical_buttons = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
+        if (physical_buttons == (1 << START) | (1 << B) | (1 << Z)) {
+            multicore_lockout_end_blocking();
+            persist_config(&state.config);
+            return;
+        }
+
+        uint32_t trigger_pressed =
+            physical_buttons & ((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
+        if (trigger_pressed != 0 &&
+            (trigger_pressed & (trigger_pressed - 1)) == 0) {
+            trigger_mode *mode;
+            uint8_t *offset;
+            if (trigger_pressed == (1 << LT_DIGITAL)) {
+                mode = &state.config.l_trigger_mode;
+                offset = &state.config.l_trigger_threshold_value;
+            } else if (trigger_pressed == (1 << RT_DIGITAL)) {
+                mode = &state.config.r_trigger_mode;
+                offset = &state.config.r_trigger_threshold_value;
+            }
+
+            state.triggers.l = *mode;
+            state.triggers.r = *offset;
+
+            switch (physical_buttons &
+                    ~((1 << LT_DIGITAL) | (1 << RT_DIGITAL))) {
+                case (1 << A):
+                    *mode = static_cast<trigger_mode>((*mode + 1) %
+                                                      (last_trigger_mode + 1));
+                    break;
+                case (1 << DPAD_UP):
+                    *offset = *offset + 1U;
+                    break;
+                case (1 << DPAD_RIGHT):
+                    *offset = *offset + 10U;
+                    break;
+                case (1 << DPAD_DOWN):
+                    *offset = *offset - 1U;
+                    break;
+                case (1 << DPAD_LEFT):
+                    *offset = *offset - 10U;
+                    break;
+            }
+        } else {
+            state.triggers.l = 0;
+            state.triggers.r = 0;
+        }
+    }
+}
+
 void analog_main() {
+    // Enable lockout
+    multicore_lockout_victim_init();
+
     // Set PWM inputs as pull up
     gpio_pull_up(AX);
     gpio_pull_up(AY);
@@ -448,10 +502,9 @@ void read_triggers(uint8_t triggers_raw[]) {
 
 // Modify analog value based on the trigger mode
 void apply_trigger_mode_analog(uint8_t *out, uint8_t analog_value,
-                                      uint8_t threshold_value,
-                                      bool digital_value, bool enable_analog,
-                                      trigger_mode mode,
-                                      trigger_mode other_mode) {
+                               uint8_t threshold_value, bool digital_value,
+                               bool enable_analog, trigger_mode mode,
+                               trigger_mode other_mode) {
     switch (mode) {
         case digital_only:
             *out = 0;
@@ -486,15 +539,15 @@ void apply_trigger_mode_analog(uint8_t *out, uint8_t analog_value,
                 if (multiplied_value > 255) {
                     *out = 255 * enable_analog;
                 } else {
-                    *out = static_cast<uint8_t>(multiplied_value) * enable_analog;
+                    *out =
+                        static_cast<uint8_t>(multiplied_value) * enable_analog;
                 }
             }
             break;
     }
 }
 
-void read_sticks(int ax_raw[], int ay_raw[], int cx_raw[],
-                        int cy_raw[]) {
+void read_sticks(int ax_raw[], int ay_raw[], int cx_raw[], int cy_raw[]) {
     int ax_high_total = 0;
     int ax_low_total = 0;
     int ay_high_total = 0;

@@ -30,6 +30,7 @@ void check_combos(uint32_t physical_buttons);
 int64_t execute_combo(alarm_id_t alarm_id, void *user_data);
 void toggle_safe_mode();
 void swap_mappings();
+void change_trigger_config();
 
 /* Core 1 */
 void analog_main();

@@ -25,7 +25,8 @@ enum trigger_mode {
     trigger_plug,
     analog_on_digital,
     both_on_digital,
-    analog_multiplied
+    analog_multiplied,
+    last_trigger_mode = analog_multiplied,
 };
 const uint8_t TRIGGER_THRESHOLD_MIN = 49;
 const uint8_t TRIGGER_THRESHOLD_MAX = 227;

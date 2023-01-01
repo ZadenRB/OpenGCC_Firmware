@@ -1,5 +1,5 @@
 /*
-    Copyright 2022 Zaden Ruggiero-Bouné
+    Copyright 2023 Zaden Ruggiero-Bouné
 
     This file is part of NobGCC-SW.
 

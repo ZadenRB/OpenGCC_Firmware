@@ -16,6 +16,8 @@ if (TARGET tinyusb_device)
         src/configuration.cpp
         src/console_communication.hpp
         src/console_communication.cpp
+        src/curve_fitting.hpp
+        src/curve_fitting.cpp
         src/joybus_uf2_bootloader.hpp
         src/joybus_uf2_bootloader.cpp
         src/main.hpp

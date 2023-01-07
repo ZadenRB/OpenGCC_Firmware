@@ -56,9 +56,6 @@ int main() {
         tight_loop_contents();
     }
 
-    // Remove in release
-    stdio_init_all();
-
     // Joybus PIO
     joybus_pio = pio0;
 
@@ -501,15 +498,15 @@ void analog_main() {
     pio_enable_sm_mask_in_sync(pwm_pio, 0xF);
 
     // Configure ADC
+    adc_init();
     adc_gpio_init(LT_ANALOG);
     adc_gpio_init(RT_ANALOG);
-    adc_set_clkdiv(0);
     adc_select_input(LT_ANALOG_ADC_INPUT);
     adc_set_round_robin(TRIGGER_ADC_MASK);
     adc_fifo_setup(true, true, 1, false, true);
 
     // ADC data destination
-    uint8_t triggers_raw[2];
+    uint8_t triggers_raw[2] = {0};
 
     // Claim ADC DMA channels
     uint triggers_dma_1 = dma_claim_unused_channel(true);
@@ -522,9 +519,9 @@ void analog_main() {
                                       false);  // Always read from same address
     channel_config_set_write_increment(&triggers_base_config,
                                        true);  // Increment write address
-    channel_config_set_transfer_data_size(&triggers_base_config, DMA_SIZE_16);
+    channel_config_set_transfer_data_size(&triggers_base_config, DMA_SIZE_8);
     channel_config_set_ring(&triggers_base_config, true,
-                            3);  // Wrap after 8 bytes
+                            1);  // Wrap after 2 bytes
     channel_config_set_dreq(&triggers_base_config, DREQ_ADC);
 
     // Setup channel specific configurations
@@ -555,7 +552,7 @@ void analog_main() {
 }
 
 // Read analog triggers & apply analog trigger modes
-void read_triggers(uint8_t triggers_raw[]) {
+void read_triggers(uint8_t triggers_raw[2]) {
     uint8_t lt_raw = triggers_raw[0];
     uint8_t rt_raw = triggers_raw[1];
     apply_trigger_mode_analog(

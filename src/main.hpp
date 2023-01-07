@@ -35,9 +35,9 @@ void change_trigger_config();
 
 /* Core 1 */
 void analog_main();
-void read_triggers(uint8_t triggers_raw[]);
+void read_triggers(uint8_t triggers_raw[2]);
 void apply_trigger_mode_analog(uint8_t *out, uint8_t analog_value,
                                uint8_t threshold_value, bool digital_value,
                                bool enable_analog, trigger_mode mode,
                                trigger_mode other_mode);
-void read_sticks(int ax_raw[], int ay_raw[], int cx_raw[], int cy_raw[]);
+void read_sticks(int ax_raw[2], int ay_raw[2], int cx_raw[2], int cy_raw[2]);

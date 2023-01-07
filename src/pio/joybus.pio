@@ -30,20 +30,20 @@
 ;
 ; EXECCTRL_JMP_PIN should be set to GPIO 0
 
-.define EIGHTH_US 10
+.define NINE_EIGHTH_US 10
 .define THREE_US 24
 .define ONE_US 8
 
 .wrap_target
-  wait 0 pin, 0         [EIGHTH_US - 1] ; Wait for data line to go low, then wait 1.25us
+  wait 0 pin, 0         [NINE_EIGHTH_US - 1] ; Wait for data line to go low, then wait 1.25us
 read_pin:
-  in pins, 1            [THREE_US - 1]  ; Shift the current pin value into the ISR, and wait 3us
-  jmp pin done_reading                  ; If the data line is high after 4.25us, treat it as a stop bit
-  jmp read_pin          [ONE_US - 2]    ; If the data line is low after 4.25us, read the pin 1.25us into the next bit
+  in pins, 1            [THREE_US - 1]       ; Shift the current pin value into the ISR, and wait 3us
+  jmp pin done_reading                       ; If the data line is high after 4.25us, treat it as a stop bit
+  jmp read_pin          [ONE_US - 2]         ; If the data line is low after 4.25us, read the pin 1.25us into the next bit
 done_reading:
-  mov isr, null                         ; Clear the stop bit from the ISR, reset shift counter
-  irq nowait RX_SYS_IRQ                 ; Set the RX SYS IRQ to trigger interrupt
-  irq wait RX_WAIT_IRQ                  ; Set the RX WAIT IRQ and wait for it to be cleared to start reading
+  mov isr, null                              ; Clear the stop bit from the ISR, reset shift counter
+  irq nowait RX_SYS_IRQ                      ; Set the RX SYS IRQ to trigger interrupt
+  irq wait RX_WAIT_IRQ                       ; Set the RX WAIT IRQ and wait for it to be cleared to start reading
 .wrap
 
 % c-sdk {
@@ -138,12 +138,6 @@ static inline void joybus_tx_program_init(PIO pio, uint sm, uint offset, uint da
 
   // Join TX & RX FIFO for TX only
   sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
-
-  // Set in pin to the data pin
-  sm_config_set_in_pins(&c, data_pin);
-
-  // Set jump pin to the data pin
-  sm_config_set_jmp_pin(&c, data_pin);
 
   // Configure side set
   sm_config_set_sideset_pins(&c, data_pin);

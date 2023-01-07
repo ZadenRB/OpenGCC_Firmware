@@ -59,9 +59,6 @@ int main() {
     // Joybus PIO
     joybus_pio = pio0;
 
-    // Link DATA GPIO to Joybus PIO
-    gpio_set_function(DATA, GPIO_FUNC_PIO0);
-
     // Joybus RX IRQ
     irq_set_exclusive_handler(PIO0_IRQ_0, handle_console_request);
     pio_set_irq0_source_enabled(joybus_pio, pis_interrupt0, true);

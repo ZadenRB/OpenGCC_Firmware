@@ -1,12 +1,12 @@
-;    Copyright 2022 Zaden Ruggiero-Bouné
+; Copyright 2023 Zaden Ruggiero-Bouné
 ;
-;    This file is part of NobGCC-SW.
+; This file is part of NobGCC-SW.
 ;
-;    NobGCC-SW is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+; NobGCC-SW is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 ;
-;    NobGCC-SW is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+; NobGCC-SW is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 ;
-;    You should have received a copy of the GNU General Public License along with NobGCC. If not, see http://www.gnu.org/licenses/.
+; You should have received a copy of the GNU General Public License along with NobGCC. If not, see http://www.gnu.org/licenses/.
 
 .define PUBLIC RX_SYS_IRQ 0
 .define PUBLIC TX_WAIT_IRQ 1
@@ -18,7 +18,7 @@
 ;
 ; Listens for commands from the console and pushes them into the RX FIFO
 ;
-; Sets the irq_num flag after pushing a command to FIFO so processor can handle data
+; Sets the RX_SYS_IRQ & RX_WAIT_IRQ flag after pushing a command to FIFO so processor can handle data
 ;
 ; SM clock should be 8MHz
 ;
@@ -26,9 +26,9 @@
 ;
 ; The ISR should be configured to shift left
 ;
-; IN/WAIT pin base should be set to 0
+; IN/WAIT pin base should be set to data pin
 ;
-; EXECCTRL_JMP_PIN should be set to GPIO 0
+; EXECCTRL_JMP_PIN should be set to data pin
 
 .define NINE_EIGHTH_US 10
 .define THREE_US 24
@@ -88,7 +88,7 @@ static inline void joybus_rx_program_init(PIO pio, uint sm, uint offset, uint da
 ;
 ; Accepts the controller state in 16-bit chunks from the TX FIFO and sends them MSB first over GPIO
 ;
-; Clears the irq_num flag after sending the controller stop bit to restart the RX state machine
+; Clears RX_WAIT_IRQ flag after sending the controller stop bit to restart the RX state machine
 ;
 ; SM clock should be 2 MHz
 ;
@@ -98,9 +98,9 @@ static inline void joybus_rx_program_init(PIO pio, uint sm, uint offset, uint da
 ;
 ; The FIFOs should be joined for TX only
 ;
-; Data GPIO should be set to input, but have a value of 0
+; Data pin should be set to input, but have a value of 0
 ;
-; Side set should be set to 1 bit, change pin direction of data GPIO
+; Side set should be set to 1 bit, change pin direction of data pin
 
 .side_set 1 pindirs
 

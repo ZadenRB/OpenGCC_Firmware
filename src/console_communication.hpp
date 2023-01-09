@@ -18,6 +18,8 @@
 
 #include <stdint.h>
 
+extern uint8_t tx_buf[10];
+
 void handle_console_request();
-void send_data(uint8_t buf[], uint32_t length);
+void send_data(uint32_t length);
 void send_mode(uint8_t mode);

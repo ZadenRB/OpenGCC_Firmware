@@ -60,15 +60,6 @@ int main() {
     // Joybus PIO
     joybus_pio = pio0;
 
-    // Joybus RX IRQ
-    irq_set_exclusive_handler(PIO0_IRQ_0, handle_console_request);
-    pio_set_irq0_source_enabled(joybus_pio, pis_interrupt0, true);
-
-    // Joybus RX
-    uint rx_offset = pio_add_program(joybus_pio, &joybus_rx_program);
-    rx_sm = pio_claim_unused_sm(joybus_pio, true);
-    joybus_rx_program_init(joybus_pio, rx_sm, rx_offset, DATA);
-
     // Joybus TX
     uint tx_offset = pio_add_program(joybus_pio, &joybus_tx_program);
     tx_sm = pio_claim_unused_sm(joybus_pio, true);
@@ -81,6 +72,15 @@ int main() {
     channel_config_set_transfer_data_size(&tx_config, DMA_SIZE_8);
     channel_config_set_dreq(&tx_config, pio_get_dreq(joybus_pio, tx_sm, true));
     dma_channel_set_config(tx_dma, &tx_config, false);
+
+    // Joybus RX IRQ
+    irq_set_exclusive_handler(PIO0_IRQ_0, handle_console_request);
+    pio_set_irq0_source_enabled(joybus_pio, pis_interrupt0, true);
+
+    // Joybus RX
+    uint rx_offset = pio_add_program(joybus_pio, &joybus_rx_program);
+    rx_sm = pio_claim_unused_sm(joybus_pio, true);
+    joybus_rx_program_init(joybus_pio, rx_sm, rx_offset, DATA);
 
     // Load configuration
     state.config = load_config();
@@ -100,6 +100,8 @@ int main() {
     gpio_pull_up(X);
     gpio_pull_up(Y);
     gpio_pull_up(START);
+
+    irq_set_enabled(PIO0_IRQ_0, true);
 
     uint32_t raw_input;
     uint16_t physical_buttons;

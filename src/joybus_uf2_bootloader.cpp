@@ -78,8 +78,8 @@ void handle_joybus_uf2_block() {
     // Block family name was incorrect, or payload size was not 256
     if (block.file_size != 0xE48BFF56 || block.payload_size != 256) {
         // Send error
-        uint8_t buf[1] = {0x01};
-        send_data(buf, 1);
+        tx_buf[0] = {0x01};
+        send_data(1);
         sleep_ms(10);
         reset();
     }
@@ -88,8 +88,8 @@ void handle_joybus_uf2_block() {
     if (block.target_addr < XIP_BASE ||
         block.target_addr >= NON_PROGRAMMABLE_ADDRESS) {
         // Send error
-        uint8_t buf[1] = {0x02};
-        send_data(buf, 1);
+        tx_buf[0] = {0x02};
+        send_data(1);
         sleep_ms(10);
         reset();
     }
@@ -97,8 +97,8 @@ void handle_joybus_uf2_block() {
     // Firmware being sent was too large
     if (block.num_blocks > MAX_NUM_BLOCKS) {
         // Send error
-        uint8_t buf[1] = {0x03};
-        send_data(buf, 1);
+        tx_buf[0] = {0x03};
+        send_data(1);
         sleep_ms(10);
         reset();
     }
@@ -106,8 +106,8 @@ void handle_joybus_uf2_block() {
     // Number of blocks changed
     if (block.num_blocks != num_blocks && num_blocks != 0) {
         // Send error
-        uint8_t buf[1] = {0x04};
-        send_data(buf, 1);
+        tx_buf[0] = {0x04};
+        send_data(1);
         sleep_ms(10);
         reset();
     }
@@ -115,8 +115,8 @@ void handle_joybus_uf2_block() {
     // Block contained the UF2_FLAG_NOT_MAIN_FLASH marking
     if (block.flags & 0x00000001 != 0) {
         // Send error
-        uint8_t buf[1] = {0x05};
-        send_data(buf, 1);
+        tx_buf[0] = {0x05};
+        send_data(1);
         sleep_ms(10);
         reset();
     }
@@ -147,8 +147,8 @@ void handle_joybus_uf2_block() {
     }
 
     // Send acknowledgement
-    uint8_t buf[1] = {0x00};
-    send_data(buf, 1);
+    tx_buf[0] = {0x00};
+    send_data(1);
 }
 
 // Run the handler function for a combo

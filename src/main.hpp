@@ -17,7 +17,6 @@
 */
 
 #include "common.hpp"
-#include "pico/stdlib.h"
 
 /* Core 0 */
 void read_digital(uint16_t physical_buttons);

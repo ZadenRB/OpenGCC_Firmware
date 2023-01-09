@@ -20,7 +20,6 @@
 
 #include "console_communication.hpp"
 #include "hardware/dma.h"
-#include "hardware/irq.h"
 #include "pico/time.h"
 
 uf2_block block;
@@ -65,6 +64,7 @@ void joybus_uf2_bootloader_init(PIO joybus_pio, uint rx_sm, uint sm, uint dma) {
 }
 
 void joybus_uf2_bootloader_enter() {
+    // TODO: Get rid of timeouts in this function
     while (num_blocks == 0 || blocks_programmed != num_blocks) {
     }
 

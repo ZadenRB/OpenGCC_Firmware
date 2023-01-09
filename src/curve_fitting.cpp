@@ -19,7 +19,7 @@
 #include "curve_fitting.hpp"
 
 void fit_curve(double coefficients[4], double measured_coordinates[],
-               double expected_coordinates[], uint num_calibration_points) {
+               double expected_coordinates[], uint32_t num_calibration_points) {
     double a[4][4] = {};
 
     for (int i = 0; i < 4 * 2 - 1; ++i) {

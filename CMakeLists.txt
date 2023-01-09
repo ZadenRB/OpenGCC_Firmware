@@ -32,18 +32,10 @@ if (TARGET tinyusb_device)
 
     target_link_libraries(NobGCC
         hardware_adc
-        hardware_clocks
         hardware_dma
-        hardware_flash
-        hardware_gpio
-        hardware_irq
         hardware_pio
-        hardware_pll
-        hardware_xosc
-        pico_float
         pico_multicore
         pico_stdlib
-        pico_time
     )
 
     pico_set_binary_type(NobGCC copy_to_ram)

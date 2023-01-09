@@ -16,7 +16,7 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#include "pico/stdlib.h"
+#include <stdint.h>
 
 void handle_console_request();
 void send_data(uint8_t buf[], uint32_t length);

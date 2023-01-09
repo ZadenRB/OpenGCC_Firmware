@@ -16,8 +16,8 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#include "pico/stdlib.h"
+#include <stdint.h>
 
 void fit_curve(double coefficients[4], double x_coordinates[],
-               double y_coordinates[], uint num_calibration_points);
+               double y_coordinates[], uint32_t num_calibration_points);
 void convert_to_inverse_4x4(double out[4][4], double in[4][4]);

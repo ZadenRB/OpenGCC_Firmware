@@ -16,9 +16,11 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
+#include <stdint.h>
+
 #include "configuration.hpp"
 #include "hardware/pio.h"
-#include "pico/stdlib.h"
+#include "pico/time.h"
 
 // Pin assignments
 const int DPAD_LEFT = 0;

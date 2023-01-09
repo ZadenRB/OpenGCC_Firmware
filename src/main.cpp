@@ -26,6 +26,7 @@
 #include "hardware/dma.h"
 #include "joybus.pio.h"
 #include "pico/multicore.h"
+#include "pico/stdlib.h"
 #include "q2x14.hpp"
 #include "read_pwm.pio.h"
 
@@ -609,7 +610,7 @@ void apply_trigger_mode_analog(uint8_t *out, uint8_t analog_value,
     }
 }
 
-void read_sticks(int ax_raw[], int ay_raw[], int cx_raw[], int cy_raw[]) {
+void read_sticks(int ax_raw[2], int ay_raw[2], int cx_raw[2], int cy_raw[2]) {
     int ax_high_total = 0;
     int ax_low_total = 0;
     int ay_high_total = 0;

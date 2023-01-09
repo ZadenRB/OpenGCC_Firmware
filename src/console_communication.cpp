@@ -22,6 +22,7 @@
 #include "hardware/dma.h"
 #include "joybus.pio.h"
 #include "joybus_uf2_bootloader.hpp"
+#include "pico/time.h"
 
 // Process a request from the console
 void handle_console_request() {

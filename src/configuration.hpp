@@ -16,6 +16,8 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
+#include <array>
+
 #include "hardware/flash.h"
 
 enum trigger_mode {
@@ -28,24 +30,24 @@ enum trigger_mode {
     analog_multiplied,
     last_trigger_mode = analog_multiplied,
 };
-const uint8_t TRIGGER_THRESHOLD_MIN = 49;
-const uint8_t TRIGGER_THRESHOLD_MAX = 227;
+constexpr uint8_t TRIGGER_THRESHOLD_MIN = 49;
+constexpr uint8_t TRIGGER_THRESHOLD_MAX = 227;
 
 struct controller_config {
-    uint8_t mappings[13];
+    std::array<uint8_t, 13> mappings;
     trigger_mode l_trigger_mode;
     uint8_t l_trigger_threshold_value;
     trigger_mode r_trigger_mode;
     uint8_t r_trigger_threshold_value;
 };
 
-const uint32_t CONFIG_FLASH_BASE = PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE;
-const uint32_t CONFIG_SRAM_BASE = XIP_NOCACHE_NOALLOC_BASE + CONFIG_FLASH_BASE;
+constexpr uint32_t CONFIG_FLASH_BASE = PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE;
+constexpr uint32_t CONFIG_SRAM_BASE = XIP_NOCACHE_NOALLOC_BASE + CONFIG_FLASH_BASE;
 
-const uint32_t PAGES_PER_SECTOR = FLASH_SECTOR_SIZE / FLASH_PAGE_SIZE;
-const uint32_t LAST_PAGE = PAGES_PER_SECTOR - 1;
+constexpr uint32_t PAGES_PER_SECTOR = FLASH_SECTOR_SIZE / FLASH_PAGE_SIZE;
+constexpr uint32_t LAST_PAGE = PAGES_PER_SECTOR - 1;
 
-const uint32_t CONFIG_SIZE = sizeof(controller_config);
+constexpr uint32_t CONFIG_SIZE = sizeof(controller_config);
 
 // Configuration - stored to flash
 uint32_t config_read_page();

@@ -20,10 +20,10 @@
 
 #include <cmath>
 
-#include "console_communication.hpp"
 #include "hardware/adc.h"
 #include "hardware/clocks.h"
 #include "hardware/dma.h"
+#include "joybus.hpp"
 #include "joybus.pio.h"
 #include "pico/multicore.h"
 #include "pico/stdlib.h"
@@ -34,6 +34,8 @@ controller_state state;
 
 PIO joybus_pio;
 uint rx_sm;
+uint rx_offset;
+pio_sm_config rx_config;
 uint tx_sm;
 uint tx_dma;
 
@@ -52,13 +54,41 @@ int main() {
     // We don't use the provided multicore_lockout_* functions for this because
     // it would be a race condition for core 1 to launch and interrupt core 0
     // before core 0 enables the RX IRQ
-    for (uint32_t val = multicore_fifo_pop_blocking(); val != INTERCORE_SIGNAL;
-         val = multicore_fifo_pop_blocking()) {
-        tight_loop_contents();
+    uint32_t val = multicore_fifo_pop_blocking();
+    while (val != INTERCORE_SIGNAL) {
+        val = multicore_fifo_pop_blocking();
     }
+
+    // Configure pins
+    gpio_init_mask(PHYSICAL_BUTTONS_MASK & (1 << DATA));
+    gpio_set_dir_in_masked(PHYSICAL_BUTTONS_MASK & (1 << DATA));
+    gpio_pull_up(DATA);
+    gpio_pull_up(DPAD_LEFT);
+    gpio_pull_up(DPAD_RIGHT);
+    gpio_pull_up(DPAD_DOWN);
+    gpio_pull_up(DPAD_UP);
+    gpio_pull_up(Z);
+    gpio_pull_up(RT_DIGITAL);
+    gpio_pull_up(LT_DIGITAL);
+    gpio_pull_up(A);
+    gpio_pull_up(B);
+    gpio_pull_up(X);
+    gpio_pull_up(Y);
+    gpio_pull_up(START);
 
     // Joybus PIO
     joybus_pio = pio0;
+
+    // Joybus RX
+    rx_offset = pio_add_program(joybus_pio, &joybus_rx_program);
+    rx_sm = pio_claim_unused_sm(joybus_pio, true);
+
+    // Joybus RX IRQ
+    irq_set_exclusive_handler(PIO0_IRQ_0, handle_console_request);
+    pio_set_irq0_source_enabled(
+        joybus_pio,
+        static_cast<pio_interrupt_source>(pis_sm0_rx_fifo_not_empty + rx_sm),
+        true);
 
     // Joybus TX
     uint tx_offset = pio_add_program(joybus_pio, &joybus_tx_program);
@@ -73,35 +103,16 @@ int main() {
     channel_config_set_dreq(&tx_config, pio_get_dreq(joybus_pio, tx_sm, true));
     dma_channel_set_config(tx_dma, &tx_config, false);
 
-    // Joybus RX IRQ
-    irq_set_exclusive_handler(PIO0_IRQ_0, handle_console_request);
-    pio_set_irq0_source_enabled(joybus_pio, pis_interrupt0, true);
-
-    // Joybus RX
-    uint rx_offset = pio_add_program(joybus_pio, &joybus_rx_program);
-    rx_sm = pio_claim_unused_sm(joybus_pio, true);
-    joybus_rx_program_init(joybus_pio, rx_sm, rx_offset, DATA);
-
     // Load configuration
     state.config = load_config();
     state.lt_is_jump = ((1 << state.config.mappings[6]) & JUMP_MASK) != 0;
     state.rt_is_jump = ((1 << state.config.mappings[5]) & JUMP_MASK) != 0;
 
-    // Set pull up
-    gpio_pull_up(DPAD_LEFT);
-    gpio_pull_up(DPAD_RIGHT);
-    gpio_pull_up(DPAD_DOWN);
-    gpio_pull_up(DPAD_UP);
-    gpio_pull_up(Z);
-    gpio_pull_up(RT_DIGITAL);
-    gpio_pull_up(LT_DIGITAL);
-    gpio_pull_up(A);
-    gpio_pull_up(B);
-    gpio_pull_up(X);
-    gpio_pull_up(Y);
-    gpio_pull_up(START);
-
     irq_set_enabled(PIO0_IRQ_0, true);
+
+    joybus_rx_program_init(joybus_pio, rx_sm, rx_offset, DATA);
+
+    pio_restart_sm_mask(joybus_pio, (1 << rx_sm) | (1 << tx_sm));
 
     uint32_t raw_input;
     uint16_t physical_buttons;
@@ -121,24 +132,23 @@ void read_digital(uint16_t physical_buttons) {
     uint16_t remapped_buttons = (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
 
     // Apply remaps
-    remap(physical_buttons, &remapped_buttons, START,
-          state.config.mappings[12]);
-    remap(physical_buttons, &remapped_buttons, Y, state.config.mappings[11]);
-    remap(physical_buttons, &remapped_buttons, X, state.config.mappings[10]);
-    remap(physical_buttons, &remapped_buttons, B, state.config.mappings[9]);
-    remap(physical_buttons, &remapped_buttons, A, state.config.mappings[8]);
-    remap(physical_buttons, &remapped_buttons, LT_DIGITAL,
+    remap(physical_buttons, remapped_buttons, START, state.config.mappings[12]);
+    remap(physical_buttons, remapped_buttons, Y, state.config.mappings[11]);
+    remap(physical_buttons, remapped_buttons, X, state.config.mappings[10]);
+    remap(physical_buttons, remapped_buttons, B, state.config.mappings[9]);
+    remap(physical_buttons, remapped_buttons, A, state.config.mappings[8]);
+    remap(physical_buttons, remapped_buttons, LT_DIGITAL,
           state.config.mappings[6]);
-    remap(physical_buttons, &remapped_buttons, RT_DIGITAL,
+    remap(physical_buttons, remapped_buttons, RT_DIGITAL,
           state.config.mappings[5]);
-    remap(physical_buttons, &remapped_buttons, Z, state.config.mappings[4]);
-    remap(physical_buttons, &remapped_buttons, DPAD_UP,
+    remap(physical_buttons, remapped_buttons, Z, state.config.mappings[4]);
+    remap(physical_buttons, remapped_buttons, DPAD_UP,
           state.config.mappings[3]);
-    remap(physical_buttons, &remapped_buttons, DPAD_DOWN,
+    remap(physical_buttons, remapped_buttons, DPAD_DOWN,
           state.config.mappings[2]);
-    remap(physical_buttons, &remapped_buttons, DPAD_RIGHT,
+    remap(physical_buttons, remapped_buttons, DPAD_RIGHT,
           state.config.mappings[1]);
-    remap(physical_buttons, &remapped_buttons, DPAD_LEFT,
+    remap(physical_buttons, remapped_buttons, DPAD_LEFT,
           state.config.mappings[0]);
 
     // If triggers are pressed (post remapping)
@@ -146,10 +156,10 @@ void read_digital(uint16_t physical_buttons) {
     state.rt_pressed = (remapped_buttons & (1 << RT_DIGITAL)) != 0;
 
     // Apply digital trigger modes
-    apply_trigger_mode_digital(&remapped_buttons, LT_DIGITAL,
+    apply_trigger_mode_digital(remapped_buttons, LT_DIGITAL,
                                state.config.l_trigger_mode,
                                state.config.r_trigger_mode);
-    apply_trigger_mode_digital(&remapped_buttons, RT_DIGITAL,
+    apply_trigger_mode_digital(remapped_buttons, RT_DIGITAL,
                                state.config.r_trigger_mode,
                                state.config.l_trigger_mode);
 
@@ -158,27 +168,27 @@ void read_digital(uint16_t physical_buttons) {
 }
 
 // Update remapped_buttons based on a physical button and its mapping
-void remap(uint16_t physical_buttons, uint16_t *remapped_buttons,
+void remap(uint16_t physical_buttons, uint16_t &remapped_buttons,
            uint8_t to_remap, uint8_t mapping) {
     uint16_t mask = ~(1 << mapping);
     bool pressed = (physical_buttons & (1 << to_remap)) != 0;
-    *remapped_buttons = (*remapped_buttons & mask) | (pressed << mapping);
+    remapped_buttons = (remapped_buttons & mask) | (pressed << mapping);
 }
 
 // Modify digital value based on the trigger mode
-void apply_trigger_mode_digital(uint16_t *buttons, uint8_t bit_to_set,
+void apply_trigger_mode_digital(uint16_t &buttons, uint8_t bit_to_set,
                                 trigger_mode mode, trigger_mode other_mode) {
     switch (mode) {
         case both:
         case trigger_plug:
         case analog_multiplied:
             if (other_mode == analog_on_digital) {
-                *buttons = *buttons & ~(1 << bit_to_set);
+                buttons = buttons & ~(1 << bit_to_set);
             }
             break;
         case analog_only:
         case analog_on_digital:
-            *buttons = *buttons & ~(1 << bit_to_set);
+            buttons = buttons & ~(1 << bit_to_set);
             break;
     }
 }
@@ -244,9 +254,8 @@ void swap_mappings() {
 
     // Wait for first button press
     uint32_t first_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
-    for (; !(first_button != 0 && (first_button & (first_button - 1)) == 0);
-         first_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK) {
-        tight_loop_contents();
+    while (!(first_button != 0 && (first_button & (first_button - 1)) == 0)) {
+        first_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
     }
 
     // Wait for all buttons to be released
@@ -256,24 +265,22 @@ void swap_mappings() {
 
     // Wait for second button press
     uint32_t second_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
-    for (; !(second_button != 0 && (second_button & (second_button - 1)) == 0 &&
-             second_button != first_button);
-         second_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK) {
-        tight_loop_contents();
+    while (!(second_button != 0 && (second_button & (second_button - 1)) == 0 &&
+             second_button != first_button)) {
+        second_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
     }
 
     // Get first button's mapping
     uint8_t first_mapping_index = 0;
-    for (; (first_button >> first_mapping_index) > 1; first_mapping_index++) {
-        tight_loop_contents();
+    while ((first_button >> first_mapping_index) > 1) {
+        ++first_mapping_index;
     }
     uint8_t first_mapping = state.config.mappings[first_mapping_index];
 
     // Get second button's mapping
     uint8_t second_mapping_index = 0;
-    for (; (second_button >> second_mapping_index) > 1;
-         second_mapping_index++) {
-        tight_loop_contents();
+    while ((second_button >> second_mapping_index) > 1) {
+        ++second_mapping_index;
     }
     uint8_t second_mapping = state.config.mappings[second_mapping_index];
 
@@ -403,10 +410,10 @@ void analog_main() {
     read_pwm_program_init(pwm_pio, cy_sm, read_pwm_offset, CY);
 
     // PWM data destinations
-    int ax_raw[2];
-    int ay_raw[2];
-    int cy_raw[2];
-    int cx_raw[2];
+    std::array<uint32_t, 2> ax_raw;
+    std::array<uint32_t, 2> ay_raw;
+    std::array<uint32_t, 2> cy_raw;
+    std::array<uint32_t, 2> cx_raw;
 
     // Claim PWM DMA channels
     int ax_dma_1 = dma_claim_unused_channel(true);
@@ -466,31 +473,31 @@ void analog_main() {
     channel_config_set_chain_to(&cy_dma_2_config, cy_dma_1);
 
     // Apply configurations
-    dma_channel_configure(ax_dma_1, &ax_dma_1_config, ax_raw,
+    dma_channel_configure(ax_dma_1, &ax_dma_1_config, ax_raw.data(),
                           &pwm_pio->rxf[ax_sm], 0xFFFFFFFF,
                           true);  // Configure and start AX DMA 1
-    dma_channel_configure(ax_dma_2, &ax_dma_2_config, ax_raw,
+    dma_channel_configure(ax_dma_2, &ax_dma_2_config, ax_raw.data(),
                           &pwm_pio->rxf[ax_sm], 0xFFFFFFFF,
                           false);  // Configure but don't start AX DMA 2
 
-    dma_channel_configure(ay_dma_1, &ay_dma_1_config, ay_raw,
+    dma_channel_configure(ay_dma_1, &ay_dma_1_config, ay_raw.data(),
                           &pwm_pio->rxf[ay_sm], 0xFFFFFFFF,
                           true);  // Configure and start AY DMA 1
-    dma_channel_configure(ay_dma_2, &ay_dma_2_config, ay_raw,
+    dma_channel_configure(ay_dma_2, &ay_dma_2_config, ay_raw.data(),
                           &pwm_pio->rxf[ay_sm], 0xFFFFFFFF,
                           false);  // Configure but don't start AY DMA 2
 
-    dma_channel_configure(cx_dma_1, &cx_dma_1_config, cx_raw,
+    dma_channel_configure(cx_dma_1, &cx_dma_1_config, cx_raw.data(),
                           &pwm_pio->rxf[cx_sm], 0xFFFFFFFF,
                           true);  // Configure and start CX DMA 1
-    dma_channel_configure(cx_dma_2, &cx_dma_2_config, cx_raw,
+    dma_channel_configure(cx_dma_2, &cx_dma_2_config, cx_raw.data(),
                           &pwm_pio->rxf[cx_sm], 0xFFFFFFFF,
                           false);  // Configure but don't start CX DMA 2
 
-    dma_channel_configure(cy_dma_1, &cy_dma_1_config, cy_raw,
+    dma_channel_configure(cy_dma_1, &cy_dma_1_config, cy_raw.data(),
                           &pwm_pio->rxf[cy_sm], 0xFFFFFFFF,
                           true);  // Configure and start CY DMA 1
-    dma_channel_configure(cy_dma_2, &cy_dma_2_config, cy_raw,
+    dma_channel_configure(cy_dma_2, &cy_dma_2_config, cy_raw.data(),
                           &pwm_pio->rxf[cy_sm], 0xFFFFFFFF,
                           false);  // Configure but don't start CY DMA 2
 
@@ -506,7 +513,7 @@ void analog_main() {
     adc_fifo_setup(true, true, 1, false, true);
 
     // ADC data destination
-    uint8_t triggers_raw[2] = {0};
+    std::array<uint8_t, 2> triggers_raw = {0};
 
     // Claim ADC DMA channels
     uint triggers_dma_1 = dma_claim_unused_channel(true);
@@ -531,80 +538,79 @@ void analog_main() {
     channel_config_set_chain_to(&triggers_config_2, triggers_dma_1);
 
     // Apply configurations
-    dma_channel_configure(triggers_dma_1, &triggers_config_1, triggers_raw,
-                          &adc_hw->fifo, 0xFFFFFFFF, true);
-    dma_channel_configure(triggers_dma_2, &triggers_config_2, triggers_raw,
-                          &adc_hw->fifo, 0xFFFFFFFF, false);
+    dma_channel_configure(triggers_dma_1, &triggers_config_1,
+                          triggers_raw.data(), &adc_hw->fifo, 0xFFFFFFFF, true);
+    dma_channel_configure(triggers_dma_2, &triggers_config_2,
+                          triggers_raw.data(), &adc_hw->fifo, 0xFFFFFFFF,
+                          false);
 
     // Start ADC
     adc_run(true);
 
     // Allow core 0 to continue (start responding to console polls) after
     // reading analog inputs once
-    read_triggers(triggers_raw);
+    read_triggers(triggers_raw[0], triggers_raw[1]);
     read_sticks(ax_raw, ay_raw, cx_raw, cy_raw);
     multicore_fifo_push_blocking(INTERCORE_SIGNAL);
 
     while (1) {
-        read_triggers(triggers_raw);
+        read_triggers(triggers_raw[0], triggers_raw[1]);
         read_sticks(ax_raw, ay_raw, cx_raw, cy_raw);
     }
 }
 
 // Read analog triggers & apply analog trigger modes
-void read_triggers(uint8_t triggers_raw[2]) {
-    uint8_t lt_raw = triggers_raw[0];
-    uint8_t rt_raw = triggers_raw[1];
+void read_triggers(uint8_t lt_raw, uint8_t rt_raw) {
     apply_trigger_mode_analog(
-        &state.triggers.l, lt_raw, state.config.l_trigger_threshold_value,
+        state.triggers.l, lt_raw, state.config.l_trigger_threshold_value,
         state.lt_pressed, !state.lt_is_jump, state.config.l_trigger_mode,
         state.config.r_trigger_mode);
     apply_trigger_mode_analog(
-        &state.triggers.r, rt_raw, state.config.r_trigger_threshold_value,
+        state.triggers.r, rt_raw, state.config.r_trigger_threshold_value,
         state.rt_pressed, !state.rt_is_jump, state.config.r_trigger_mode,
         state.config.l_trigger_mode);
 }
 
 // Modify analog value based on the trigger mode
-void apply_trigger_mode_analog(uint8_t *out, uint8_t analog_value,
+void apply_trigger_mode_analog(uint8_t &out, uint8_t analog_value,
                                uint8_t threshold_value, bool digital_value,
                                bool enable_analog, trigger_mode mode,
                                trigger_mode other_mode) {
     switch (mode) {
         case digital_only:
-            *out = 0;
+            out = 0;
             break;
         case both:
         case analog_only:
             if (other_mode == analog_on_digital) {
-                *out = 0;
+                out = 0;
             } else {
-                *out = analog_value * enable_analog;
+                out = analog_value * enable_analog;
             }
             break;
         case trigger_plug:
             if (other_mode == analog_on_digital) {
-                *out = 0;
+                out = 0;
             } else if (analog_value > threshold_value) {
-                *out = threshold_value * enable_analog;
+                out = threshold_value * enable_analog;
             } else {
-                *out = analog_value * enable_analog;
+                out = analog_value * enable_analog;
             }
             break;
         case analog_on_digital:
         case both_on_digital:
-            *out = threshold_value * digital_value * enable_analog;
+            out = threshold_value * digital_value * enable_analog;
             break;
         case analog_multiplied:
             if (other_mode == analog_on_digital) {
-                *out = 0;
+                out = 0;
             } else {
                 float multiplier = (threshold_value * 0.01124f) + 0.44924f;
                 float multiplied_value = round(analog_value * multiplier);
                 if (multiplied_value > 255) {
-                    *out = 255 * enable_analog;
+                    out = 255 * enable_analog;
                 } else {
-                    *out =
+                    out =
                         static_cast<uint8_t>(multiplied_value) * enable_analog;
                 }
             }
@@ -612,7 +618,10 @@ void apply_trigger_mode_analog(uint8_t *out, uint8_t analog_value,
     }
 }
 
-void read_sticks(int ax_raw[2], int ay_raw[2], int cx_raw[2], int cy_raw[2]) {
+void read_sticks(std::array<uint32_t, 2> const &ax_raw,
+                 std::array<uint32_t, 2> const &ay_raw,
+                 std::array<uint32_t, 2> const &cx_raw,
+                 std::array<uint32_t, 2> const &cy_raw) {
     int ax_high_total = 0;
     int ax_low_total = 0;
     int ay_high_total = 0;
@@ -621,7 +630,7 @@ void read_sticks(int ax_raw[2], int ay_raw[2], int cx_raw[2], int cy_raw[2]) {
     int cx_low_total = 0;
     int cy_high_total = 0;
     int cy_low_total = 0;
-    for (int i = 0; i < 1000; ++i) {
+    for (uint32_t i = 0; i < 1000; ++i) {
         ax_high_total += ax_raw[0] + 3;
         ax_low_total += ax_raw[1];
         ay_high_total += ay_raw[0] + 3;

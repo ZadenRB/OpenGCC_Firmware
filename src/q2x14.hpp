@@ -24,10 +24,10 @@ class Q2x14 {
     Q2x14(signed short in);
     Q2x14(float in);
 
-    Q2x14 operator+(Q2x14 const &obj);
-    Q2x14 operator-(Q2x14 const &obj);
-    Q2x14 operator*(Q2x14 const &obj);
-    Q2x14 operator/(Q2x14 const &obj);
+    Q2x14 operator+(Q2x14 const& obj);
+    Q2x14 operator-(Q2x14 const& obj);
+    Q2x14 operator*(Q2x14 const& obj);
+    Q2x14 operator/(Q2x14 const& obj);
 
     float to_float();
 };

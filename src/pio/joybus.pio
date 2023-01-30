@@ -8,9 +8,9 @@
 ;
 ; You should have received a copy of the GNU General Public License along with NobGCC. If not, see http://www.gnu.org/licenses/.
 
-.define PUBLIC RX_SYS_IRQ 0
-.define PUBLIC TX_WAIT_IRQ 1
-.define PUBLIC RX_WAIT_IRQ 2
+.define PUBLIC TX_SYS_IRQ 0
+.define PUBLIC RX_WAIT_IRQ 1
+.define TX_WAIT_IRQ 4
 
 .program joybus_rx
 
@@ -18,9 +18,7 @@
 ;
 ; Listens for commands from the console and pushes them into the RX FIFO
 ;
-; Sets the RX_SYS_IRQ & RX_WAIT_IRQ flag after pushing a command to FIFO so processor can handle data
-;
-; SM clock should be 8MHz
+; SM clock should be 8 MHz
 ;
 ; Autopush should be configured with a threshold of 8 bits
 ;
@@ -30,29 +28,32 @@
 ;
 ; EXECCTRL_JMP_PIN should be set to data pin
 
-.define NINE_EIGHTH_US 10
-.define THREE_US 24
-.define ONE_US 8
+.define TWO_US 16
 
 .wrap_target
-  wait 0 pin, 0         [NINE_EIGHTH_US - 1] ; Wait for data line to go low, then wait 1.25us
-read_pin:
-  in pins, 1            [THREE_US - 1]       ; Shift the current pin value into the ISR, and wait 3us
-  jmp pin done_reading                       ; If the data line is high after 4.25us, treat it as a stop bit
-  jmp read_pin          [ONE_US - 2]         ; If the data line is low after 4.25us, read the pin 1.25us into the next bit
-done_reading:
-  mov isr, null                              ; Clear the stop bit from the ISR, reset shift counter
-  irq nowait RX_SYS_IRQ                      ; Set the RX SYS IRQ to trigger interrupt
-  irq wait RX_WAIT_IRQ                       ; Set the RX WAIT IRQ and wait for it to be cleared to start reading
+read:
+  wait 0 pin 0          [TWO_US - 1] ; Wait for data line to go low, then wait 2.5us
+  in pins, 1                         ; Read pin value
+  wait 1 pin 0                       ; Wait for data line to go high
 .wrap
+public read_stop_bit:
+  wait 1 pin 0                        ; Wait for data line to go high at end of last bit
+  wait 0 pin 0                        ; Wait for data line to go low at start of stop bit
+  wait 1 pin 0           [TWO_US - 1] ; Wait for data line to go high at end of stop bit, then delay 2us for stop bit to finish
+  irq nowait TX_WAIT_IRQ              ; Raise TX_WAIT_IRQ to signal to TX SM that stop bit has finished
+  irq wait RX_WAIT_IRQ                ; Wait on RX_WAIT_IRQ for TX SM to signal that data transmission has finished
+  jmp read                            ; Resume reading
 
 % c-sdk {
+#include "hardware/clocks.h"
+
 static inline void joybus_rx_program_init(PIO pio, uint sm, uint offset, uint data_pin) {
   // Get default config
   pio_sm_config c = joybus_rx_program_get_default_config(offset);
 
-  // Set clock divider to 16 (run at 8MHz)
-  pio_sm_set_clkdiv(pio, sm, 16.0);
+  // Set clock divider to run at 8 MHz
+  float divider = (float)clock_get_hz(clk_sys) / (8 * MHZ);
+  sm_config_set_clkdiv(&c, divider);
 
   // Set ISR to shift left, autopush with an 8-bit threshold
   sm_config_set_in_shift(&c, false, true, 8);
@@ -60,18 +61,9 @@ static inline void joybus_rx_program_init(PIO pio, uint sm, uint offset, uint da
   // Join TX & RX FIFO for RX only
   sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
 
-  // Set in pin to the data pin
+  // Configure SM pins
   sm_config_set_in_pins(&c, data_pin);
 
-  // Set jump pin to the data pin
-  sm_config_set_jmp_pin(&c, data_pin);
-
-  // Connect PIO to data pin
-  pio_gpio_init(pio, data_pin);
-
-  // Set pin to input
-  pio_sm_set_consecutive_pindirs(pio, sm, data_pin, 1, false);
-  
   // Load configuration
   pio_sm_init(pio, sm, offset, &c);
 
@@ -90,65 +82,71 @@ static inline void joybus_rx_program_init(PIO pio, uint sm, uint offset, uint da
 ;
 ; Clears RX_WAIT_IRQ flag after sending the controller stop bit to restart the RX state machine
 ;
-; SM clock should be 2 MHz
+; SM clock should be 8 MHz
 ;
-; Autopull should be configured with a threshold of 16 bits
+; Autopull should be configured with a threshold of 8 bits
 ;
 ; The OSR should be configured to shift left
 ;
 ; The FIFOs should be joined for TX only
 ;
-; Data pin should be set to input, but have a value of 0
-;
-; Side set should be set to 1 bit, change pin direction of data pin
+; Data pin should be set to input
 
-.side_set 1 pindirs
+.define ONE_US 8
+.define TWO_US 16
 
-.define ONE_US 2
-.define TWO_US 4
-
+  mov x, ~NULL                        ; Fill scratch register X with 0xFFFFFFFF
 wait_to_transmit:
-  irq clear RX_WAIT_IRQ side 0              ; Clear the RX WAIT IRQ to restart the RX state machine
-  irq wait TX_WAIT_IRQ  side 0              ; Set the TX WAIT IRQ and wait for it to be cleared to begin transmitting
-.wrap_target
-transmit:
-  jmp !osre send_data   side 0              ; Transmit if the OSR isn't empty
-  nop                   side 0              ; Stay high for 1us total at the end of the last bit before sending the stop bit
-  nop                   side 1 [TWO_US - 1] ; Drive the data line low for 2us to send a stop bit
-  jmp wait_to_transmit  side 0 [ONE_US - 1] ; Let the data line high for 2us total to send a stop bit, and wait to transmit
+  irq clear RX_WAIT_IRQ               ; Clear the RX_WAIT IRQ to resume the RX state machine
+  irq wait TX_SYS_IRQ                 ; Wait for CPU to clear IRQ for output
+  wait 1 irq TX_WAIT_IRQ              ; Wait for RX SM to raise IRQ indicating stop bit is done
+  set pins, 1                         ; Set pin high
+  set pindirs, 1                      ; Set to output
+fetch_data:
+  pull noblock                        ; Pull if there is more data available
+  mov y, osr                          ; Copy OSR contents into scratch register Y
+  jmp x!=y send_data                  ; If there is more data, continue to transmit
+  nop                    [1]          ; Delay two cycles to let previous bit finish
+  set pins, 0            [TWO_US - 1] ; Drive low for 2us for stop bit
+  set pins, 1            [TWO_US - 1] ; Let high for 2us for stop bit
+  set pindirs, 0                      ; Set to input
+  jmp wait_to_transmit                ; Stop transmitting
 send_data:
-  out y, 1              side 0              ; Get the next bit from the OSR
-  jmp !y send_zero      side 1 [ONE_US - 1] ; Drive data line low for 1us at start of bit
-send_one:
-  jmp transmit          side 0 [TWO_US - 1] ; Let the data line high for 3us total to send a one
-send_zero:
-  nop                   side 1 [TWO_US - 1] ; Drive the data line low for 3us total to send a zero
-.wrap
+  out null, 24                        ; Discard 24 MSBs to get the actual byte left-aligned
+  set y, 7                            ; Setup bit counter
+send_bit:
+  set pins, 0            [ONE_US - 1] ; Drive low at start of bit
+  out pins, 1            [TWO_US - 1] ; Drive low/let high based on OSR contents
+  set pins, 1            [ONE_US - 8] ; Let high at end of bit
+  jmp y-- delay                       ; If this isn't the last bit, delay extra cycles
+  jmp fetch_data                      ; If this is the last bit, fetch the next byte
+delay:
+  jmp send_bit           [5]          ; Delay 5 cycles to keep timing with the 8 cycles between bytes
 
 % c-sdk {
+#include "hardware/clocks.h"
+
 static inline void joybus_tx_program_init(PIO pio, uint sm, uint offset, uint data_pin) {
   // Get default config
   pio_sm_config c = joybus_tx_program_get_default_config(offset);
 
-  // Set clock divider to 64 (run at 2MHz)
-  pio_sm_set_clkdiv(pio, sm, 64.0);
+  // Set SM run at 8MHz
+  float divider = (float)clock_get_hz(clk_sys) / (8 * MHZ);
+  sm_config_set_clkdiv(&c, divider);
 
-  // Set OSR to shift left, autopull with an 8-bit threshold
-  sm_config_set_out_shift(&c, false, true, 8);
+  // Set OSR to shift left, 8-bit threshold
+  sm_config_set_out_shift(&c, false, false, 8);
 
   // Join TX & RX FIFO for TX only
   sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
 
-  // Configure side set
-  sm_config_set_sideset_pins(&c, data_pin);
-  sm_config_set_sideset(&c, 1, false, true);
+  // Configure SM pins
+  sm_config_set_out_pins(&c, data_pin, 1);
+  sm_config_set_set_pins(&c, data_pin, 1);
 
   // Connect PIO to data pin
   pio_gpio_init(pio, data_pin);
-
-  // Set pin to input
-  pio_sm_set_consecutive_pindirs(pio, sm, data_pin, 1, false);
-  
+ 
   // Load configuration
   pio_sm_init(pio, sm, offset, &c);
 

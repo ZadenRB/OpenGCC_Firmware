@@ -18,7 +18,9 @@
 
 #include <stdint.h>
 
-extern uint8_t tx_buf[10];
+#include <array>
+
+extern std::array<uint8_t, 10> tx_buf;
 
 void handle_console_request();
 void send_data(uint32_t length);

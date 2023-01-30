@@ -19,7 +19,7 @@
 #include "configuration.hpp"
 
 uint32_t config_read_page() {
-    for (int page = 0; page < PAGES_PER_SECTOR; ++page) {
+    for (uint32_t page = 0; page < PAGES_PER_SECTOR; ++page) {
         uint32_t read_address = CONFIG_SRAM_BASE + (page * FLASH_PAGE_SIZE);
         if (*reinterpret_cast<uint8_t *>(read_address) == 0xFF) {
             // Return last initialized flash (-1 if no flash is initialized)
@@ -74,8 +74,8 @@ void persist_config(controller_config *config) {
     }
 
     uint8_t *config_bytes = reinterpret_cast<uint8_t *>(config);
-    uint8_t buf[FLASH_PAGE_SIZE] = {0};
-    for (int i = 0; i < FLASH_PAGE_SIZE; ++i) {
+    std::array<uint8_t, FLASH_PAGE_SIZE> buf = {0};
+    for (std::size_t i = 0; i < FLASH_PAGE_SIZE; ++i) {
         if (i < CONFIG_SIZE) {
             buf[i] = config_bytes[i];
         } else {
@@ -83,6 +83,6 @@ void persist_config(controller_config *config) {
         }
     }
 
-    flash_range_program(CONFIG_FLASH_BASE + (write_page * FLASH_PAGE_SIZE), buf,
+    flash_range_program(CONFIG_FLASH_BASE + (write_page * FLASH_PAGE_SIZE), buf.data(),
                         FLASH_PAGE_SIZE);
 }

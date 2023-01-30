@@ -16,19 +16,19 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#include "joybus_uf2_bootloader.hpp"
+#include "joybus_uf2.hpp"
 
-#include "console_communication.hpp"
+#include "joybus.hpp"
 #include "hardware/dma.h"
 #include "pico/time.h"
 
 uf2_block block;
 uint32_t num_blocks;
 uint32_t blocks_programmed;
-bool erased[4096];
+std::array<bool, 4096> erased;
 int dma_channel = -1;
 
-void joybus_uf2_bootloader_init(PIO joybus_pio, uint rx_sm, uint sm, uint dma) {
+void joybus_uf2_init(PIO joybus_pio, uint rx_sm, uint sm, uint dma) {
     // IRQ
     irq_handler_t current_handler = irq_get_exclusive_handler(PIO0_IRQ_0);
     if (current_handler != NULL) {
@@ -63,7 +63,7 @@ void joybus_uf2_bootloader_init(PIO joybus_pio, uint rx_sm, uint sm, uint dma) {
     blocks_programmed = 0;
 }
 
-void joybus_uf2_bootloader_enter() {
+void joybus_uf2_enter() {
     // TODO: Get rid of timeouts in this function
     while (num_blocks == 0 || blocks_programmed != num_blocks) {
     }
@@ -78,7 +78,7 @@ void handle_joybus_uf2_block() {
     // Block family name was incorrect, or payload size was not 256
     if (block.file_size != 0xE48BFF56 || block.payload_size != 256) {
         // Send error
-        tx_buf[0] = {0x01};
+        tx_buf[0] = 0x01;
         send_data(1);
         sleep_ms(10);
         reset();
@@ -88,7 +88,7 @@ void handle_joybus_uf2_block() {
     if (block.target_addr < XIP_BASE ||
         block.target_addr >= NON_PROGRAMMABLE_ADDRESS) {
         // Send error
-        tx_buf[0] = {0x02};
+        tx_buf[0] = 0x02;
         send_data(1);
         sleep_ms(10);
         reset();
@@ -97,7 +97,7 @@ void handle_joybus_uf2_block() {
     // Firmware being sent was too large
     if (block.num_blocks > MAX_NUM_BLOCKS) {
         // Send error
-        tx_buf[0] = {0x03};
+        tx_buf[0] = 0x03;
         send_data(1);
         sleep_ms(10);
         reset();
@@ -106,7 +106,7 @@ void handle_joybus_uf2_block() {
     // Number of blocks changed
     if (block.num_blocks != num_blocks && num_blocks != 0) {
         // Send error
-        tx_buf[0] = {0x04};
+        tx_buf[0] = 0x04;
         send_data(1);
         sleep_ms(10);
         reset();
@@ -115,7 +115,7 @@ void handle_joybus_uf2_block() {
     // Block contained the UF2_FLAG_NOT_MAIN_FLASH marking
     if (block.flags & 0x00000001 != 0) {
         // Send error
-        tx_buf[0] = {0x05};
+        tx_buf[0] = 0x05;
         send_data(1);
         sleep_ms(10);
         reset();
@@ -130,7 +130,7 @@ void handle_joybus_uf2_block() {
     }
 
     bool should_program = false;
-    for (int i = 0; i < 256; ++i) {
+    for (std::size_t i = 0; i < 256; ++i) {
         if (block.data[i] !=
             *reinterpret_cast<uint8_t *>(block.target_addr - XIP_BASE +
                                          XIP_NOCACHE_NOALLOC_BASE + i)) {
@@ -141,13 +141,13 @@ void handle_joybus_uf2_block() {
 
     if (should_program) {
         // Program page if it hasn't already been programmed
-        flash_range_program(block.target_addr - XIP_BASE, block.data,
+        flash_range_program(block.target_addr - XIP_BASE, block.data.data(),
                             block.payload_size);
-        blocks_programmed++;
+        ++blocks_programmed;
     }
 
     // Send acknowledgement
-    tx_buf[0] = {0x00};
+    tx_buf[0] = 0x00;
     send_data(1);
 }
 

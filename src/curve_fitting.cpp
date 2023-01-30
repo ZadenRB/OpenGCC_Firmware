@@ -18,24 +18,26 @@
 
 #include "curve_fitting.hpp"
 
-void fit_curve(double coefficients[4], double measured_coordinates[],
-               double expected_coordinates[], uint32_t num_calibration_points) {
-    double a[4][4] = {};
+template <std::size_t NCoordinates, std::size_t NCoefficients>
+void fit_curve(std::array<double, NCoefficients>& coefficients,
+               std::array<double, NCoordinates> const& measured_coordinates,
+               std::array<double, NCoordinates> const& expected_coordinates) {
+    std::array<std::array<double, NCoefficients>, NCoefficients> a = {};
 
-    for (int i = 0; i < 4 * 2 - 1; ++i) {
+    for (std::size_t i = 0; i < NCoefficients * 2 - 1; ++i) {
         double sum = 0;
-        for (int j = 0; j < num_calibration_points; ++j) {
+        for (double measured_coordinate : measured_coordinates) {
             double raised_measured_coordinate = 1;
-            for (int k = 0; k < i; ++k) {
-                raised_measured_coordinate *= measured_coordinates[j];
+            for (uint32_t k = 0; k < i; ++k) {
+                raised_measured_coordinate *= measured_coordinate;
             }
             sum += raised_measured_coordinate;
         }
 
-        int current_col = i;
-        int current_row = 0;
-        if (current_col > 4 - 1) {
-            current_col = 4 - 1;
+        std::size_t current_col = i;
+        std::size_t current_row = 0;
+        if (current_col > NCoefficients - 1) {
+            current_col = NCoefficients - 1;
             current_row = i - current_col;
         }
 
@@ -44,19 +46,19 @@ void fit_curve(double coefficients[4], double measured_coordinates[],
             --current_col;
             ++current_row;
 
-            if (current_col < 0 || current_row > 4 - 1) {
+            if (current_col < 0 || current_row > NCoefficients - 1) {
                 break;
             }
         }
     }
 
-    double b[4] = {};
+    std::array<double, NCoefficients> b = {};
 
-    for (int i = 0; i < 4; ++i) {
+    for (std::size_t i = 0; i < NCoefficients; ++i) {
         double sum = 0;
-        for (int j = 0; j < num_calibration_points; ++j) {
+        for (std::size_t j = 0; j < NCoordinates; ++j) {
             double raised_measured_coordinate = 1;
-            for (int k = 0; k < i; ++k) {
+            for (uint32_t k = 0; k < i; ++k) {
                 raised_measured_coordinate *= measured_coordinates[j];
             }
             sum += raised_measured_coordinate * expected_coordinates[j];
@@ -64,65 +66,67 @@ void fit_curve(double coefficients[4], double measured_coordinates[],
         b[i] = sum;
     }
 
-    double inverse[4][4] = {};
-    convert_to_inverse_4x4(inverse, a);
+    std::array<std::array<double, NCoefficients>, NCoefficients> inverse = {};
+    convert_to_inverse(inverse, a);
 
-    for (int r = 0; r < 4; ++r) {
+    for (std::size_t r = 0; r < NCoefficients; ++r) {
         double value = 0;
-        for (int c = 0; c < 4; ++c) {
+        for (std::size_t c = 0; c < NCoefficients; ++c) {
             value += inverse[c][r] * b[c];
         }
         coefficients[r] = value;
     }
 }
 
-void convert_to_inverse_4x4(double out[4][4], double in[4][4]) {
+template <std::size_t N>
+void convert_to_inverse(std::array<std::array<double, N>, N>& out,
+                        std::array<std::array<double, N>, N> const& in) {
     // Fill inverse with input array
-    double inverse[8][4] = {};
-    for (int r = 0; r < 4; ++r) {
-        for (int c = 0; c < 4; ++c) {
+    std::array<std::array<double, N>, N* 2> inverse = {};
+    for (std::size_t r = 0; r < N; ++r) {
+        for (std::size_t c = 0; c < N; ++c) {
             inverse[c][r] = in[c][r];
         }
     }
 
     // Find inverse
-    for (int r = 0; r < 4; ++r) {
-        for (int c = 0; c < 4 * 2; ++c) {
-            if (c == (r + 4)) {
+    for (std::size_t r = 0; r < N; ++r) {
+        for (std::size_t c = 0; c < N * 2; ++c) {
+            if (c == (r + N)) {
                 inverse[c][r] = 1;
             }
         }
     }
-    for (int r = 4 - 1; r > 0; --r) {
+    for (std::size_t r = N - 1; r > 0; --r) {
         if (inverse[0][r - 1] < inverse[0][r]) {
-            for (int c = 0; c < 4 * 2; ++c) {
+            for (std::size_t c = 0; c < N * 2; ++c) {
                 double temp = inverse[c][r];
                 inverse[c][r] = inverse[c][r - 1];
                 inverse[c][r - 1] = temp;
             }
         }
     }
-    for (int c = 0; c < 4; ++c) {
-        for (int r = 0; r < 4; ++r) {
+    for (std::size_t c = 0; c < N; ++c) {
+        for (std::size_t r = 0; r < N; ++r) {
             if (r != c) {
                 double temp = inverse[c][r] / inverse[c][c];
-                for (int i = 0; i < 4 * 2; ++i) {
+                for (std::size_t i = 0; i < N * 2; ++i) {
                     inverse[i][r] -= inverse[i][c] * temp;
                 }
             }
         }
     }
-    for (int r = 0; r < 4; ++r) {
+    for (std::size_t r = 0; r < N; ++r) {
         double temp = inverse[r][r];
-        for (int c = 0; c < 4 * 2; ++c) {
+        for (std::size_t c = 0; c < N * 2; ++c) {
             inverse[c][r] = inverse[c][r] / temp;
         }
     }
 
     // Populate out array
-    for (int r = 0; r < 4; ++r) {
-        for (int c = 0; c < 4; ++c) {
-            out[c][r] = inverse[c + 4][r];
+    for (std::size_t r = 0; r < N; ++r) {
+        for (std::size_t c = 0; c < N; ++c) {
+            out[c][r] = inverse[c + N][r];
         }
     }
 }

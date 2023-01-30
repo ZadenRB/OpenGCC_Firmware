@@ -18,6 +18,12 @@
 
 #include <stdint.h>
 
-void fit_curve(double coefficients[4], double x_coordinates[],
-               double y_coordinates[], uint32_t num_calibration_points);
-void convert_to_inverse_4x4(double out[4][4], double in[4][4]);
+#include <array>
+
+template <std::size_t NCoordinates, std::size_t NCoefficients>
+void fit_curve(std::array<double, NCoefficients>& coefficients,
+               std::array<double, NCoordinates> const& measured_coordinates,
+               std::array<double, NCoordinates> const& expected_coordinates);
+template <std::size_t N>
+void convert_to_inverse(std::array<std::array<double, N>, N>& out,
+                        std::array<std::array<double, N>, N> const& in);

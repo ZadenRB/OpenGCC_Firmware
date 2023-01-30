@@ -16,14 +16,16 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
+#include <array>
+
 #include "hardware/flash.h"
 #include "hardware/pio.h"
 
 #define AIRCR_Register (*((volatile uint32_t *)(PPB_BASE + 0x0ED0C)))
 
-const uint32_t MAX_NUM_BLOCKS =
+constexpr uint32_t MAX_NUM_BLOCKS =
     (PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE) / FLASH_PAGE_SIZE;
-const uint32_t NON_PROGRAMMABLE_ADDRESS =
+constexpr uint32_t NON_PROGRAMMABLE_ADDRESS =
     XIP_BASE + PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE;
 
 struct uf2_block {
@@ -36,11 +38,11 @@ struct uf2_block {
     uint32_t block_no;
     uint32_t num_blocks;
     uint32_t file_size;  // or familyID;
-    uint8_t data[476];
+    std::array<uint8_t, 476> data;
     uint32_t magic_end;
 };
 
-void joybus_uf2_bootloader_init(PIO joybus_pio, uint rx_sm);
-void joybus_uf2_bootloader_enter();
+void joybus_uf2_init(PIO joybus_pio, uint rx_sm);
+void joybus_uf2_enter();
 void handle_joybus_uf2_block();
 void reset();

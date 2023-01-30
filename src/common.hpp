@@ -23,37 +23,37 @@
 #include "pico/time.h"
 
 // Pin assignments
-const int DPAD_LEFT = 0;
-const int DPAD_RIGHT = 1;
-const int DPAD_DOWN = 2;
-const int DPAD_UP = 3;
-const int Z = 4;
-const int RT_DIGITAL = 5;
-const int LT_DIGITAL = 6;
-const int A = 8;
-const int B = 9;
-const int X = 10;
-const int Y = 11;
-const int START = 12;
-const int CY = 13;
-const int CX = 14;
-const int DATA = 18;
-const int AY = 24;
-const int AX = 25;
-const int LT_ANALOG = 26;
-const int RT_ANALOG = 27;
-const int LT_ANALOG_ADC_INPUT = LT_ANALOG - 26;
-const int RT_ANALOG_ADC_INPUT = RT_ANALOG - 26;
+constexpr int DPAD_LEFT = 0;
+constexpr int DPAD_RIGHT = 1;
+constexpr int DPAD_DOWN = 2;
+constexpr int DPAD_UP = 3;
+constexpr int Z = 4;
+constexpr int RT_DIGITAL = 5;
+constexpr int LT_DIGITAL = 6;
+constexpr int A = 8;
+constexpr int B = 9;
+constexpr int X = 10;
+constexpr int Y = 11;
+constexpr int START = 12;
+constexpr int CY = 13;
+constexpr int CX = 14;
+constexpr int DATA = 18;
+constexpr int AY = 24;
+constexpr int AX = 25;
+constexpr int LT_ANALOG = 26;
+constexpr int RT_ANALOG = 27;
+constexpr int LT_ANALOG_ADC_INPUT = LT_ANALOG - 26;
+constexpr int RT_ANALOG_ADC_INPUT = RT_ANALOG - 26;
 // Origin bit
-const int ALWAYS_HIGH = 7;
-const int ORIGIN = 13;
+constexpr int ALWAYS_HIGH = 7;
+constexpr int ORIGIN = 13;
 
-const uint16_t PHYSICAL_BUTTONS_MASK =
+constexpr uint16_t PHYSICAL_BUTTONS_MASK =
     (1 << DPAD_LEFT) | (1 << DPAD_RIGHT) | (1 << DPAD_DOWN) | (1 << DPAD_UP) |
     (1 << Z) | (1 << RT_DIGITAL) | (1 << LT_DIGITAL) | (1 << A) | (1 << B) |
     (1 << X) | (1 << Y) | (1 << START);
-const uint16_t JUMP_MASK = (1 << X) | (1 << Y);
-const uint TRIGGER_ADC_MASK =
+constexpr uint16_t JUMP_MASK = (1 << X) | (1 << Y);
+constexpr uint TRIGGER_ADC_MASK =
     (1 << LT_ANALOG_ADC_INPUT) | (1 << RT_ANALOG_ADC_INPUT);
 
 struct stick {
@@ -97,6 +97,7 @@ extern controller_state state;
 extern PIO joybus_pio;
 extern uint tx_sm;
 extern uint rx_sm;
+extern uint rx_offset;
 extern uint tx_dma;
 
-const int INTERCORE_SIGNAL = 0x623F16E4;
+constexpr int INTERCORE_SIGNAL = 0x623F16E4;

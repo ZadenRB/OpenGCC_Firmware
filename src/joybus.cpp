@@ -16,26 +16,58 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#include "console_communication.hpp"
+#include "joybus.hpp"
 
 #include "common.hpp"
 #include "hardware/dma.h"
+#include "hardware/pio.h"
 #include "joybus.pio.h"
-#include "joybus_uf2_bootloader.hpp"
+#include "joybus_uf2.hpp"
 #include "pico/time.h"
 
-uint8_t tx_buf[10];
+std::array<uint8_t, 10> tx_buf;
 
 // Process a request from the console
 void handle_console_request() {
-    pio_interrupt_clear(joybus_pio, RX_SYS_IRQ);
+    uint32_t cmd = pio_sm_get(joybus_pio, rx_sm);
 
-    uint8_t request[8];
-    for (int i = 0; !pio_sm_is_rx_fifo_empty(joybus_pio, rx_sm) && i < 8; ++i) {
-        request[i] = (uint8_t)pio_sm_get(joybus_pio, rx_sm);
+    int request_len;
+
+    switch (cmd) {
+        case 0x40:
+        case 0x42:
+        case 0x43:
+            request_len = 2;
+            break;
+        case 0x45:
+            request_len = 4;
+            break;
+        default:
+            request_len = 0;
+            break;
     }
 
-    switch (request[0]) {
+    std::array<uint8_t, 4> request;
+    for (std::size_t i = 0; i < request_len; ++i) {
+        // Wait a max of 48us for a new item to be pushed into the RX FIFO,
+        // otherwise assume we caught the middle of a command & return
+        absolute_time_t timeout_at = make_timeout_time_us(48);
+        while (pio_sm_is_rx_fifo_empty(joybus_pio, rx_sm)) {
+            if (absolute_time_diff_us(get_absolute_time(), timeout_at) < 0) {
+                // Clear ISR (mov isr, null)
+                pio_sm_exec(joybus_pio, rx_sm,
+                            pio_encode_mov(pio_isr, pio_null));
+                return;
+            }
+        }
+        request[i] = pio_sm_get(joybus_pio, rx_sm);
+    }
+
+    // Move to code to process stop bit
+    pio_sm_exec(joybus_pio, rx_sm,
+                pio_encode_jmp(rx_offset + joybus_rx_offset_read_stop_bit));
+
+    switch (cmd) {
         case 0xFF:
             // TODO: reset
         case 0x00: {
@@ -47,18 +79,18 @@ void handle_console_request() {
             return;
         }
         case 0x40:
-            if (request[1] > 0x04) {
-                request[1] = 0x00;
+            if (request[0] > 0x04) {
+                request[0] = 0x00;
             }
             break;
         case 0x41:
             state.origin = 0;
-            request[1] = 0x05;
+            request[0] = 0x05;
             break;
         case 0x42:
             // TODO: calibrate
         case 0x43:
-            request[1] = 0x05;
+            request[0] = 0x05;
             break;
         case 0x44: {
             // Firmware version X.Y.Z {X, Y, Z}
@@ -69,14 +101,14 @@ void handle_console_request() {
             return;
         }
         case 0x45: {
-            uint32_t requested_firmware_size = request[1] | (request[2] << 8) |
-                                               (request[3] << 16) |
-                                               (request[4] << 24);
+            uint32_t requested_firmware_size = request[0] | (request[1] << 8) |
+                                               (request[2] << 16) |
+                                               (request[3] << 24);
             if (requested_firmware_size <=
                 PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE) {
                 tx_buf[0] = 0x00;
                 send_data(1);
-                joybus_uf2_bootloader_enter();
+                joybus_uf2_enter();
             } else {
                 tx_buf[0] = 0x01;
                 send_data(1);
@@ -85,20 +117,19 @@ void handle_console_request() {
         }
         default:
             // Continue reading if command was unknown
-            pio_interrupt_clear(joybus_pio, RX_WAIT_IRQ);
             return;
     }
 
-    send_mode(request[1]);
+    send_mode(request[0]);
     return;
 }
 
 // Send buffer of data
 void send_data(uint32_t length) {
     dma_channel_config tx_config = dma_get_channel_config(tx_dma);
-    dma_channel_configure(tx_dma, &tx_config, &joybus_pio->txf[tx_sm], tx_buf,
-                          length, true);
-    pio_interrupt_clear(joybus_pio, TX_WAIT_IRQ);
+    dma_channel_configure(tx_dma, &tx_config, &joybus_pio->txf[tx_sm],
+                          tx_buf.data(), length, true);
+    pio_interrupt_clear(joybus_pio, TX_SYS_IRQ);
 }
 
 // Send controller state in given mode

@@ -20,7 +20,7 @@
 
 #include "hardware/flash.h"
 
-enum trigger_mode {
+typedef enum trigger_mode {
     both,
     digital_only,
     analog_only,
@@ -29,30 +29,44 @@ enum trigger_mode {
     both_on_digital,
     analog_multiplied,
     last_trigger_mode = analog_multiplied,
-};
+} trigger_mode;
 constexpr uint8_t TRIGGER_THRESHOLD_MIN = 49;
 constexpr uint8_t TRIGGER_THRESHOLD_MAX = 227;
 
-struct controller_config {
+typedef struct stick_calibration {
+    std::array<double, 4> x_coefficients;
+    std::array<double, 4> y_coefficients;
+} stick_calibration;
+
+typedef struct controller_configuration {
     std::array<uint8_t, 13> mappings;
     trigger_mode l_trigger_mode;
     uint8_t l_trigger_threshold_value;
     trigger_mode r_trigger_mode;
     uint8_t r_trigger_threshold_value;
-};
+    stick_calibration analog_stick_coefficients;
+    stick_calibration c_stick_coefficients;
 
-constexpr uint32_t CONFIG_FLASH_BASE = PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE;
-constexpr uint32_t CONFIG_SRAM_BASE = XIP_NOCACHE_NOALLOC_BASE + CONFIG_FLASH_BASE;
+    static controller_configuration& get_instance();
+    controller_configuration(controller_configuration const&) = delete;
+
+    void persist();
+    void swap_mappings();
+    void configure_triggers();
+
+   private:
+    controller_configuration();
+
+    static uint32_t read_page();
+    static uint32_t write_page();
+} controller_configuration;
+
+constexpr uint32_t CONFIG_FLASH_BASE =
+    PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE;
+constexpr uint32_t CONFIG_SRAM_BASE =
+    XIP_NOCACHE_NOALLOC_BASE + CONFIG_FLASH_BASE;
 
 constexpr uint32_t PAGES_PER_SECTOR = FLASH_SECTOR_SIZE / FLASH_PAGE_SIZE;
 constexpr uint32_t LAST_PAGE = PAGES_PER_SECTOR - 1;
 
-constexpr uint32_t CONFIG_SIZE = sizeof(controller_config);
-
-// Configuration - stored to flash
-uint32_t config_read_page();
-uint32_t config_write_page();
-
-controller_config load_config();
-
-void persist_config(controller_config*);
+constexpr uint32_t CONFIG_SIZE = sizeof(controller_configuration);

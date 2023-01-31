@@ -51,7 +51,7 @@ int main() {
 
     // Wait for core 1 push to the intercore FIFO, signaling core 0 to proceed
     //
-    // We don't use the provided multicore_lockout_* functions for this because
+    // We don't use the SDK's multicore_lockout_* functions for this because
     // it would be a race condition for core 1 to launch and interrupt core 0
     // before core 0 enables the RX IRQ
     uint32_t val = multicore_fifo_pop_blocking();
@@ -104,7 +104,7 @@ int main() {
     dma_channel_set_config(tx_dma, &tx_config, false);
 
     // Load configuration
-    state.config = load_config();
+    state.config = controller_configuration::get_instance();
     state.lt_is_jump = ((1 << state.config.mappings[6]) & JUMP_MASK) != 0;
     state.rt_is_jump = ((1 << state.config.mappings[5]) & JUMP_MASK) != 0;
 
@@ -216,7 +216,7 @@ void check_combos(uint32_t physical_buttons) {
     if (!state.safe_mode) {
         switch (physical_buttons) {
             case (1 << START) | (1 << B) | (1 << A):
-            case (1 << START) | (1 << A) | (1 << Z):
+            case (1 << START) | (1 << B) | (1 << Z):
                 state.active_combo = physical_buttons;
                 state.combo_alarm =
                     add_alarm_in_ms(3000, execute_combo, NULL, false);
@@ -232,10 +232,10 @@ int64_t execute_combo(alarm_id_t alarm_id, void *user_data) {
             toggle_safe_mode();
             break;
         case (1 << START) | (1 << B) | (1 << A):
-            swap_mappings();
+            state.config.swap_mappings();
             break;
-        case (1 << START) | (1 << A) | (1 << Z):
-            change_trigger_config();
+        case (1 << START) | (1 << B) | (1 << Z):
+            state.config.configure_triggers();
             break;
     }
     state.active_combo = 0;
@@ -244,143 +244,6 @@ int64_t execute_combo(alarm_id_t alarm_id, void *user_data) {
 
 // Toggle safe mode
 void toggle_safe_mode() { state.safe_mode = !state.safe_mode; }
-
-// Swap the mappings of two buttons
-void swap_mappings() {
-    // Wait for all buttons to be released
-    while ((~gpio_get_all() & PHYSICAL_BUTTONS_MASK) != 0) {
-        tight_loop_contents();
-    }
-
-    // Wait for first button press
-    uint32_t first_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
-    while (!(first_button != 0 && (first_button & (first_button - 1)) == 0)) {
-        first_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
-    }
-
-    // Wait for all buttons to be released
-    while ((~gpio_get_all() & PHYSICAL_BUTTONS_MASK) != 0) {
-        tight_loop_contents();
-    }
-
-    // Wait for second button press
-    uint32_t second_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
-    while (!(second_button != 0 && (second_button & (second_button - 1)) == 0 &&
-             second_button != first_button)) {
-        second_button = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
-    }
-
-    // Get first button's mapping
-    uint8_t first_mapping_index = 0;
-    while ((first_button >> first_mapping_index) > 1) {
-        ++first_mapping_index;
-    }
-    uint8_t first_mapping = state.config.mappings[first_mapping_index];
-
-    // Get second button's mapping
-    uint8_t second_mapping_index = 0;
-    while ((second_button >> second_mapping_index) > 1) {
-        ++second_mapping_index;
-    }
-    uint8_t second_mapping = state.config.mappings[second_mapping_index];
-
-    state.config.mappings[first_mapping_index] = second_mapping;
-    state.config.mappings[second_mapping_index] = first_mapping;
-    persist_config(&state.config);
-}
-
-// Change trigger modes & offsets
-void change_trigger_config() {
-    // Lock core 1 to prevent analog trigger output from being displayed
-    multicore_lockout_start_blocking();
-
-    // Initialize variables
-    uint32_t last_combo = 0;
-    uint32_t same_combo_count = 0;
-
-    while (true) {
-        // Get buttons
-        uint32_t physical_buttons = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
-
-        // If exit combo is pressed, unlock core 1, save changes, and exit
-        if (physical_buttons == (1 << START) | (1 << B) | (1 << Z)) {
-            multicore_lockout_end_blocking();
-            persist_config(&state.config);
-            return;
-        }
-
-        // Mask out non-trigger buttons
-        uint32_t trigger_pressed =
-            physical_buttons & ((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
-        if (trigger_pressed != 0 &&
-            (trigger_pressed & (trigger_pressed - 1)) == 0) {
-            // If one (and only one) trigger is pressed, set it's mode & offset
-            // as the values to change
-            trigger_mode *mode;
-            uint8_t *offset;
-            if (trigger_pressed == (1 << LT_DIGITAL)) {
-                mode = &state.config.l_trigger_mode;
-                offset = &state.config.l_trigger_threshold_value;
-            } else if (trigger_pressed == (1 << RT_DIGITAL)) {
-                mode = &state.config.r_trigger_mode;
-                offset = &state.config.r_trigger_threshold_value;
-            }
-
-            // Mask out trigger buttons
-            uint32_t combo =
-                physical_buttons & ~((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
-            if (combo != 0 && combo == last_combo) {
-                // If the same buttons are pressed, increment count
-                ++same_combo_count;
-
-                // Throttle for 500ms initially, then 200ms
-                sleep_ms(same_combo_count > 1 ? 200 : 500);
-            } else {
-                // Otherwise reset count
-                same_combo_count = 0;
-            }
-
-            // Set last combo to current combo
-            last_combo = combo;
-
-            // Update mode/offset based on combo
-            switch (combo) {
-                case (1 << A):
-                    *mode = static_cast<trigger_mode>((*mode + 1) %
-                                                      (last_trigger_mode + 1));
-                    break;
-                case (1 << DPAD_UP):
-                    *offset = *offset + 1U;
-                    break;
-                case (1 << DPAD_RIGHT):
-                    *offset = *offset + 10U;
-                    break;
-                case (1 << DPAD_DOWN):
-                    *offset = *offset - 1U;
-                    break;
-                case (1 << DPAD_LEFT):
-                    *offset = *offset - 10U;
-                    break;
-                default:
-                    // If no valid combo was pressed, reset last combo and
-                    // counter to avoid throttling
-                    last_combo = 0;
-                    same_combo_count = 0;
-                    break;
-            }
-
-            // Display mode on left trigger & offset on right trigger
-            state.triggers.l = *mode;
-            state.triggers.r = *offset;
-        } else {
-            // Otherwise reset last combo and counter, and display nothing
-            state.triggers.l = 0;
-            state.triggers.r = 0;
-            last_combo = 0;
-            same_combo_count = 0;
-        }
-    }
-}
 
 void analog_main() {
     // Enable lockout

@@ -80,7 +80,7 @@ struct controller_state {
     bool safe_mode = 1;
     uint16_t active_combo = 0;
     alarm_id_t combo_alarm;
-    controller_config config;
+    controller_configuration config;
 };
 
 struct raw_stick {

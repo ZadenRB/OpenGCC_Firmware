@@ -16,12 +16,12 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#ifndef _MAIN_H_
-#define _MAIN_H_
+#ifndef MAIN_H_
+#define MAIN_H_
 
 #include <array>
 
-#include "common.hpp"
+#include "board.hpp"
 
 /** \file main.hpp
  * \brief Main processor functions
@@ -118,4 +118,4 @@ void read_sticks(std::array<uint32_t, 2> const& ax_raw,
                  std::array<uint32_t, 2> const& cx_raw,
                  std::array<uint32_t, 2> const& cy_raw);
 
-#endif  // _MAIN_H_
+#endif  // MAIN_H_

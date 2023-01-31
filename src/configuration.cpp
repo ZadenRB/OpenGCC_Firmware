@@ -18,7 +18,8 @@
 
 #include "configuration.hpp"
 
-#include "common.hpp"
+#include "board.hpp"
+#include "calibration.hpp"
 #include "hardware/gpio.h"
 #include "pico/multicore.h"
 
@@ -26,49 +27,48 @@ controller_configuration::controller_configuration() {
     uint32_t read_page = controller_configuration::read_page();
     if (read_page == -1) {
         // If there's no stored configuration, load defaults & persist
-        this->mappings[0] = 0b0000;
-        this->mappings[1] = 0b0001;
-        this->mappings[2] = 0b0010;
-        this->mappings[3] = 0b0011;
-        this->mappings[4] = 0b0100;
-        this->mappings[5] = 0b0101;
-        this->mappings[6] = 0b0110;
-        this->mappings[7] = 0b0000;
-        this->mappings[8] = 0b1000;
-        this->mappings[9] = 0b1001;
-        this->mappings[10] = 0b1010;
-        this->mappings[11] = 0b1011;
-        this->mappings[12] = 0b1100;
-        this->l_trigger_mode = both;
-        this->l_trigger_threshold_value = TRIGGER_THRESHOLD_MIN;
-        this->r_trigger_mode = both;
-        this->r_trigger_threshold_value = TRIGGER_THRESHOLD_MIN;
-        this->persist();
+        mappings[0] = 0b0000;
+        mappings[1] = 0b0001;
+        mappings[2] = 0b0010;
+        mappings[3] = 0b0011;
+        mappings[4] = 0b0100;
+        mappings[5] = 0b0101;
+        mappings[6] = 0b0110;
+        mappings[7] = 0b0000;
+        mappings[8] = 0b1000;
+        mappings[9] = 0b1001;
+        mappings[10] = 0b1010;
+        mappings[11] = 0b1011;
+        mappings[12] = 0b1100;
+        l_trigger_mode = both;
+        l_trigger_threshold_value = TRIGGER_THRESHOLD_MIN;
+        r_trigger_mode = both;
+        r_trigger_threshold_value = TRIGGER_THRESHOLD_MIN;
+        // TODO: add default coefficient values
+        persist();
     }
 
     // Load stored configuration
     controller_configuration *config_in_flash =
         reinterpret_cast<controller_configuration *>(
             CONFIG_SRAM_BASE + (read_page * FLASH_PAGE_SIZE));
-    this->mappings[0] = config_in_flash->mappings[0];
-    this->mappings[1] = config_in_flash->mappings[1];
-    this->mappings[2] = config_in_flash->mappings[2];
-    this->mappings[3] = config_in_flash->mappings[3];
-    this->mappings[4] = config_in_flash->mappings[4];
-    this->mappings[5] = config_in_flash->mappings[5];
-    this->mappings[6] = config_in_flash->mappings[6];
-    this->mappings[7] = config_in_flash->mappings[7];
-    this->mappings[8] = config_in_flash->mappings[8];
-    this->mappings[9] = config_in_flash->mappings[9];
-    this->mappings[10] = config_in_flash->mappings[10];
-    this->mappings[11] = config_in_flash->mappings[11];
-    this->mappings[12] = config_in_flash->mappings[12];
-    this->l_trigger_mode = config_in_flash->l_trigger_mode;
-    this->l_trigger_threshold_value =
-        config_in_flash->l_trigger_threshold_value;
-    this->r_trigger_mode = config_in_flash->r_trigger_mode;
-    this->r_trigger_threshold_value =
-        config_in_flash->r_trigger_threshold_value;
+    mappings[0] = config_in_flash->mappings[0];
+    mappings[1] = config_in_flash->mappings[1];
+    mappings[2] = config_in_flash->mappings[2];
+    mappings[3] = config_in_flash->mappings[3];
+    mappings[4] = config_in_flash->mappings[4];
+    mappings[5] = config_in_flash->mappings[5];
+    mappings[6] = config_in_flash->mappings[6];
+    mappings[7] = config_in_flash->mappings[7];
+    mappings[8] = config_in_flash->mappings[8];
+    mappings[9] = config_in_flash->mappings[9];
+    mappings[10] = config_in_flash->mappings[10];
+    mappings[11] = config_in_flash->mappings[11];
+    mappings[12] = config_in_flash->mappings[12];
+    l_trigger_mode = config_in_flash->l_trigger_mode;
+    l_trigger_threshold_value = config_in_flash->l_trigger_threshold_value;
+    r_trigger_mode = config_in_flash->r_trigger_mode;
+    r_trigger_threshold_value = config_in_flash->r_trigger_threshold_value;
 }
 
 controller_configuration &controller_configuration::get_instance() {
@@ -77,8 +77,8 @@ controller_configuration &controller_configuration::get_instance() {
 }
 
 void controller_configuration::persist() {
-    uint32_t write_page = this->write_page();
-    if (write_page == 0 && this->read_page() != -1) {
+    uint32_t w_page = write_page();
+    if (w_page == 0 && read_page() != -1) {
         flash_range_erase(CONFIG_FLASH_BASE, FLASH_SECTOR_SIZE);
     }
 
@@ -92,7 +92,7 @@ void controller_configuration::persist() {
         }
     }
 
-    flash_range_program(CONFIG_FLASH_BASE + (write_page * FLASH_PAGE_SIZE),
+    flash_range_program(CONFIG_FLASH_BASE + (w_page * FLASH_PAGE_SIZE),
                         buf.data(), FLASH_PAGE_SIZE);
 }
 
@@ -143,18 +143,18 @@ void controller_configuration::swap_mappings() {
     while ((first_button >> first_mapping_index) > 1) {
         ++first_mapping_index;
     }
-    uint8_t first_mapping = this->mappings[first_mapping_index];
+    uint8_t first_mapping = mappings[first_mapping_index];
 
     // Get second button's mapping
     uint8_t second_mapping_index = 0;
     while ((second_button >> second_mapping_index) > 1) {
         ++second_mapping_index;
     }
-    uint8_t second_mapping = this->mappings[second_mapping_index];
+    uint8_t second_mapping = mappings[second_mapping_index];
 
-    this->mappings[first_mapping_index] = second_mapping;
-    this->mappings[second_mapping_index] = first_mapping;
-    this->persist();
+    mappings[first_mapping_index] = second_mapping;
+    mappings[second_mapping_index] = first_mapping;
+    persist();
 }
 
 void controller_configuration::configure_triggers() {
@@ -172,7 +172,7 @@ void controller_configuration::configure_triggers() {
         // If exit combo is pressed, unlock core 1, save changes, and exit
         if (physical_buttons == (1 << START) | (1 << B) | (1 << Z)) {
             multicore_lockout_end_blocking();
-            this->persist();
+            persist();
             return;
         }
 
@@ -186,11 +186,11 @@ void controller_configuration::configure_triggers() {
             trigger_mode *mode;
             uint8_t *offset;
             if (trigger_pressed == (1 << LT_DIGITAL)) {
-                mode = &this->l_trigger_mode;
-                offset = &this->l_trigger_threshold_value;
+                mode = &l_trigger_mode;
+                offset = &l_trigger_threshold_value;
             } else if (trigger_pressed == (1 << RT_DIGITAL)) {
-                mode = &this->r_trigger_mode;
-                offset = &this->r_trigger_threshold_value;
+                mode = &r_trigger_mode;
+                offset = &r_trigger_threshold_value;
             }
 
             // Mask out trigger buttons
@@ -247,4 +247,39 @@ void controller_configuration::configure_triggers() {
             same_combo_count = 0;
         }
     }
+}
+
+void controller_configuration::calibrate_stick(
+    stick_coefficients &to_calibrate, stick &display_stick,
+    std::array<uint32_t, 2> const &x_raw,
+    std::array<uint32_t, 2> const &y_raw) {
+    stick_calibration calibration(display_stick);
+
+    while (!calibration.done()) {
+        calibration.display_step();
+        uint32_t physical_buttons = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
+        if (physical_buttons == (1 << B)) {
+            calibration.undo_measurement();
+        } else if (physical_buttons == (1 << A)) {
+            uint x_high_total = 0;
+            uint x_low_total = 0;
+            uint y_high_total = 0;
+            uint y_low_total = 0;
+            for (uint i = 0; i < SAMPLES_PER_READ; ++i) {
+                x_high_total += x_raw[0] + 3;
+                x_low_total += x_raw[1];
+                y_high_total += y_raw[0] + 3;
+                y_low_total += y_raw[1];
+            }
+            double measured_x =
+                x_high_total / (double)(x_low_total + x_high_total);
+            double measured_y =
+                y_high_total / (double)(y_low_total + y_high_total);
+            calibration.record_measurement(measured_x, measured_y);
+        } else if (physical_buttons == (1 << X)) {
+            calibration.skip_measurement();
+        }
+    }
+
+    calibration.generate_coefficients(to_calibrate);
 }

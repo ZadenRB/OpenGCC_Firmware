@@ -16,15 +16,13 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#ifndef _COMMON_H_
-#define _COMMON_H_
+#ifndef BOARD_H_
+#define BOARD_H_
 
 #include "configuration.hpp"
-#include "hardware/pio.h"
-#include "pico/time.h"
 
-/** \file common.hpp
- * \brief Defines global variables, structures, and constants
+/** \file board.hpp
+ * \brief Board-specific constants
  */
 
 /// \brief D-pad left pin
@@ -109,70 +107,9 @@ constexpr uint16_t JUMP_MASK = (1 << X) | (1 << Y);
 constexpr uint TRIGGER_ADC_MASK =
     (1 << LT_ANALOG_ADC_INPUT) | (1 << RT_ANALOG_ADC_INPUT);
 
-/// \brief Grouping of axes for a single analog stick
-struct stick {
-    uint8_t x;  /// X axis
-    uint8_t y;  /// Y axis
-};
-
-/// \brief Current controller state
-struct controller_state {
-    /// \brief tate of digital inputs
-    uint16_t buttons = 0;
-    /// \brief hether the physical left trigger button is pressed
-    bool lt_pressed = false;
-    /** \brief Whether the left trigger button has been remapped to a jump
-     * button (X or Y)
-     */
-    bool lt_is_jump;
-    /// \briefhether the physical right trigger button is pressed
-    bool rt_pressed = false;
-    /** \brief Whether the right trigger button has been remapped to a jump
-     * button (X or Y)
-     */
-    bool rt_is_jump;
-    /// \brief tate of A-stick
-    stick a_stick;
-    /// \brief tate of C-stick
-    stick c_stick;
-    /// \brief eft trigger analog value
-    uint8_t l_trigger;
-    /// \brief ight trigger analog value
-    uint8_t r_trigger;
-    /// \brief true`if origin has not been set, `false` if it has
-    bool origin = true;
-    /// \brief true` if safe mode is active, `false` if it is not
-    bool safe_mode = true;
-    /// \brief tate of digital inputs of the in-progress combo
-    uint16_t active_combo = 0;
-    /// \brief larm ID for triggering a combo
-    alarm_id_t combo_alarm;
-};
-
-/** \brief Global state
- * \note Not thread-safe. Must ensure each field is only ever written
- * from one core or in critical sections.
- */
-extern controller_state state;
-
-/// \brief PIO being used for Joybus protocol
-extern PIO joybus_pio;
-
-/// \brief State machine being used for Joybus TX
-extern uint tx_sm;
-
-/// \brief State machine being used for Joybus RX
-extern uint rx_sm;
-
-/// \brief Offset into PIO instruction memory of the RX program
-extern uint rx_offset;
-
-/// \brief DMA channel being used for Joybus TX
-extern uint tx_dma;
-
 /** \brief Magic number for second core to signal first core to finish setup and
  * begin transmission with console
  */
 constexpr uint32_t INTERCORE_SIGNAL = 0x623F16E4;
 
-#endif  // _COMMON_H_
+#endif  // BOARD_H_

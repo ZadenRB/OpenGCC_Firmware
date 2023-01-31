@@ -11,19 +11,21 @@ if (TARGET tinyusb_device)
     add_executable(NobGCC)
 
     target_sources(NobGCC PRIVATE
-        src/common.hpp
+        src/board.hpp
+        src/calibration.hpp
+        src/calibration.cpp
         src/configuration.hpp
         src/configuration.cpp
         src/curve_fitting.hpp
-        src/curve_fitting.cpp
-        src/joybus.hpp
-        src/joybus.cpp
         src/joybus_uf2.hpp
         src/joybus_uf2.cpp
+        src/joybus.hpp
+        src/joybus.cpp
         src/main.hpp
         src/main.cpp
         src/q2x14.hpp
         src/q2x14.cpp
+        src/state.hpp
     )
 
     target_compile_definitions(NobGCC PRIVATE

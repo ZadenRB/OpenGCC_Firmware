@@ -16,8 +16,8 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#ifndef _JOYBUS_UF2_H_
-#define _JOYBUS_UF2_H_
+#ifndef JOYBUS_UF2_H_
+#define JOYBUS_UF2_H_
 
 #include <array>
 
@@ -77,4 +77,4 @@ void handle_joybus_uf2_block();
 /// \brief Restart controller
 void reset();
 
-#endif  // _JOYBUS_UF2_H_
+#endif  // JOYBUS_UF2_H_

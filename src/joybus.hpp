@@ -16,8 +16,8 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#ifndef _JOYBUS_H_
-#define _JOYBUS_H_
+#ifndef JOYBUS_H_
+#define JOYBUS_H_
 
 #include <stdint.h>
 
@@ -298,4 +298,4 @@ void send_data(uint32_t length);
  */
 void send_mode(uint8_t mode);
 
-#endif  // _JOYBUS_H_
+#endif  // JOYBUS_H_

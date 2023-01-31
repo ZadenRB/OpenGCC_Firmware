@@ -40,6 +40,11 @@ pio_sm_config rx_config;
 uint tx_sm;
 uint tx_dma;
 
+std::array<uint32_t, 2> ax_raw;
+std::array<uint32_t, 2> ay_raw;
+std::array<uint32_t, 2> cx_raw;
+std::array<uint32_t, 2> cy_raw;
+
 int main() {
     // Initialize clocks
     clocks_init();
@@ -209,6 +214,8 @@ void check_combos(uint32_t physical_buttons) {
         switch (physical_buttons) {
             case (1 << START) | (1 << B) | (1 << A):
             case (1 << START) | (1 << B) | (1 << Z):
+            case (1 << START) | (1 << B) | (1 << LT_DIGITAL):
+            case (1 << START) | (1 << B) | (1 << RT_DIGITAL):
                 state.active_combo = physical_buttons;
                 state.combo_alarm =
                     add_alarm_in_ms(3000, execute_combo, NULL, false);
@@ -229,6 +236,12 @@ int64_t execute_combo(alarm_id_t alarm_id, void *user_data) {
         case (1 << START) | (1 << B) | (1 << Z):
             config.configure_triggers();
             break;
+        case (1 << START) | (1 << B) | (1 << LT_DIGITAL):
+            config.calibrate_stick(config.a_stick, state.c_stick, ax_raw,
+                                   ay_raw);
+        case (1 << START) | (1 << B) | (1 << RT_DIGITAL):
+            config.calibrate_stick(config.c_stick, state.a_stick, cx_raw,
+                                   cy_raw);
     }
     state.active_combo = 0;
     return 0;
@@ -263,12 +276,6 @@ void analog_main() {
 
     uint cy_sm = pio_claim_unused_sm(pwm_pio, true);
     read_pwm_program_init(pwm_pio, cy_sm, read_pwm_offset, CY);
-
-    // PWM data destinations
-    std::array<uint32_t, 2> ax_raw;
-    std::array<uint32_t, 2> ay_raw;
-    std::array<uint32_t, 2> cy_raw;
-    std::array<uint32_t, 2> cx_raw;
 
     // Claim PWM DMA channels
     int ax_dma_1 = dma_claim_unused_channel(true);
@@ -477,15 +484,15 @@ void read_sticks(std::array<uint32_t, 2> const &ax_raw,
                  std::array<uint32_t, 2> const &ay_raw,
                  std::array<uint32_t, 2> const &cx_raw,
                  std::array<uint32_t, 2> const &cy_raw) {
-    int ax_high_total = 0;
-    int ax_low_total = 0;
-    int ay_high_total = 0;
-    int ay_low_total = 0;
-    int cx_high_total = 0;
-    int cx_low_total = 0;
-    int cy_high_total = 0;
-    int cy_low_total = 0;
-    for (uint32_t i = 0; i < 1000; ++i) {
+    uint ax_high_total = 0;
+    uint ax_low_total = 0;
+    uint ay_high_total = 0;
+    uint ay_low_total = 0;
+    uint cx_high_total = 0;
+    uint cx_low_total = 0;
+    uint cy_high_total = 0;
+    uint cy_low_total = 0;
+    for (uint i = 0; i < SAMPLES_PER_READ; ++i) {
         ax_high_total += ax_raw[0] + 3;
         ax_low_total += ax_raw[1];
         ay_high_total += ay_raw[0] + 3;

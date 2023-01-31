@@ -18,12 +18,12 @@
 
 #include "joybus.hpp"
 
-#include "common.hpp"
 #include "hardware/dma.h"
 #include "hardware/pio.h"
 #include "joybus.pio.h"
 #include "joybus_uf2.hpp"
 #include "pico/time.h"
+#include "state.hpp"
 
 std::array<uint8_t, 10> tx_buf;
 

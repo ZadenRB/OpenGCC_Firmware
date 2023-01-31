@@ -16,7 +16,8 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#include <stdint.h>
+#ifndef _COMMON_H_
+#define _COMMON_H_
 
 #include "configuration.hpp"
 #include "hardware/pio.h"
@@ -80,7 +81,6 @@ struct controller_state {
     bool safe_mode = 1;
     uint16_t active_combo = 0;
     alarm_id_t combo_alarm;
-    controller_configuration config;
 };
 
 struct raw_stick {
@@ -101,3 +101,5 @@ extern uint rx_offset;
 extern uint tx_dma;
 
 constexpr int INTERCORE_SIGNAL = 0x623F16E4;
+
+#endif  // _COMMON_H_

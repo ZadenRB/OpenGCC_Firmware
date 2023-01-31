@@ -47,8 +47,28 @@ controller_configuration::controller_configuration() {
     }
 
     // Load stored configuration
-    *this = *reinterpret_cast<controller_configuration *>(
-        CONFIG_SRAM_BASE + (read_page * FLASH_PAGE_SIZE));
+    controller_configuration *config_in_flash =
+        reinterpret_cast<controller_configuration *>(
+            CONFIG_SRAM_BASE + (read_page * FLASH_PAGE_SIZE));
+    this->mappings[0] = config_in_flash->mappings[0];
+    this->mappings[1] = config_in_flash->mappings[1];
+    this->mappings[2] = config_in_flash->mappings[2];
+    this->mappings[3] = config_in_flash->mappings[3];
+    this->mappings[4] = config_in_flash->mappings[4];
+    this->mappings[5] = config_in_flash->mappings[5];
+    this->mappings[6] = config_in_flash->mappings[6];
+    this->mappings[7] = config_in_flash->mappings[7];
+    this->mappings[8] = config_in_flash->mappings[8];
+    this->mappings[9] = config_in_flash->mappings[9];
+    this->mappings[10] = config_in_flash->mappings[10];
+    this->mappings[11] = config_in_flash->mappings[11];
+    this->mappings[12] = config_in_flash->mappings[12];
+    this->l_trigger_mode = config_in_flash->l_trigger_mode;
+    this->l_trigger_threshold_value =
+        config_in_flash->l_trigger_threshold_value;
+    this->r_trigger_mode = config_in_flash->r_trigger_mode;
+    this->r_trigger_threshold_value =
+        config_in_flash->r_trigger_threshold_value;
 }
 
 controller_configuration &controller_configuration::get_instance() {

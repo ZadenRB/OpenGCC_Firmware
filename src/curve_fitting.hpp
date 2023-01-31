@@ -16,6 +16,9 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
+#ifndef _CURVE_FITTING_H_
+#define _CURVE_FITTING_H_
+
 #include <stdint.h>
 
 #include <array>
@@ -27,3 +30,5 @@ void fit_curve(std::array<double, NCoefficients>& coefficients,
 template <std::size_t N>
 void convert_to_inverse(std::array<std::array<double, N>, N>& out,
                         std::array<std::array<double, N>, N> const& in);
+
+#endif  // _CURVE_FITTING_H_

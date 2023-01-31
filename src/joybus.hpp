@@ -16,6 +16,9 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
+#ifndef _JOYBUS_H_
+#define _JOYBUS_H_
+
 #include <stdint.h>
 
 #include <array>
@@ -25,3 +28,5 @@ extern std::array<uint8_t, 10> tx_buf;
 void handle_console_request();
 void send_data(uint32_t length);
 void send_mode(uint8_t mode);
+
+#endif  // _JOYBUS_H_

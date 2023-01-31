@@ -16,6 +16,9 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
+#ifndef _JOYBUS_UF2_H_
+#define _JOYBUS_UF2_H_
+
 #include <array>
 
 #include "hardware/flash.h"
@@ -46,3 +49,5 @@ void joybus_uf2_init(PIO joybus_pio, uint rx_sm);
 void joybus_uf2_enter();
 void handle_joybus_uf2_block();
 void reset();
+
+#endif  // _JOYBUS_UF2_H_

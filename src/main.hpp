@@ -16,6 +16,9 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
+#ifndef _MAIN_H_
+#define _MAIN_H_
+
 #include <array>
 
 #include "common.hpp"
@@ -43,3 +46,5 @@ void read_sticks(std::array<uint32_t, 2> const& ax_raw,
                  std::array<uint32_t, 2> const& ay_raw,
                  std::array<uint32_t, 2> const& cx_raw,
                  std::array<uint32_t, 2> const& cy_raw);
+
+#endif  // _MAIN_H_

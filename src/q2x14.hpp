@@ -16,6 +16,9 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
+#ifndef _Q2X14_H_
+#define _Q2X14_H_
+
 class Q2x14 {
    private:
     signed short val;
@@ -31,3 +34,5 @@ class Q2x14 {
 
     float to_float();
 };
+
+#endif  // _Q2X14_H_

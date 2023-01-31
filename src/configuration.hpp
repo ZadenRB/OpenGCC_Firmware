@@ -16,11 +16,14 @@
    NobGCC. If not, see http://www.gnu.org/licenses/.
 */
 
+#ifndef _CONFIGURATION_H_
+#define _CONFIGURATION_H_
+
 #include <array>
 
 #include "hardware/flash.h"
 
-typedef enum trigger_mode {
+enum trigger_mode {
     both,
     digital_only,
     analog_only,
@@ -29,26 +32,24 @@ typedef enum trigger_mode {
     both_on_digital,
     analog_multiplied,
     last_trigger_mode = analog_multiplied,
-} trigger_mode;
+};
+
 constexpr uint8_t TRIGGER_THRESHOLD_MIN = 49;
 constexpr uint8_t TRIGGER_THRESHOLD_MAX = 227;
 
-typedef struct stick_calibration {
-    std::array<double, 4> x_coefficients;
-    std::array<double, 4> y_coefficients;
-} stick_calibration;
-
-typedef struct controller_configuration {
+struct controller_configuration {
     std::array<uint8_t, 13> mappings;
     trigger_mode l_trigger_mode;
     uint8_t l_trigger_threshold_value;
     trigger_mode r_trigger_mode;
     uint8_t r_trigger_threshold_value;
-    stick_calibration analog_stick_coefficients;
-    stick_calibration c_stick_coefficients;
 
     static controller_configuration& get_instance();
     controller_configuration(controller_configuration const&) = delete;
+    controller_configuration(controller_configuration&&) = delete;
+    controller_configuration& operator=(const controller_configuration&) =
+        delete;
+    controller_configuration& operator=(controller_configuration&&) = delete;
 
     void persist();
     void swap_mappings();
@@ -59,7 +60,7 @@ typedef struct controller_configuration {
 
     static uint32_t read_page();
     static uint32_t write_page();
-} controller_configuration;
+};
 
 constexpr uint32_t CONFIG_FLASH_BASE =
     PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE;
@@ -70,3 +71,5 @@ constexpr uint32_t PAGES_PER_SECTOR = FLASH_SECTOR_SIZE / FLASH_PAGE_SIZE;
 constexpr uint32_t LAST_PAGE = PAGES_PER_SECTOR - 1;
 
 constexpr uint32_t CONFIG_SIZE = sizeof(controller_configuration);
+
+#endif  // _CONFIGURATION_H_

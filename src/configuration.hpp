@@ -23,20 +23,38 @@
 
 #include "hardware/flash.h"
 
+/** \file configuration.hpp
+ * \brief Controller configuration API
+ *
+ * Controller settings that persist between controller reboots. Handles
+ * loading, modifying, and persisting the settings. This includes:
+ * * Button mappings
+ * * Trigger modes
+ */
+
+/// \brief Enumeration of trigger modes
 enum trigger_mode {
-    both,
-    digital_only,
-    analog_only,
-    trigger_plug,
-    analog_on_digital,
-    both_on_digital,
-    analog_multiplied,
-    last_trigger_mode = analog_multiplied,
+    both,          ///< Analog and digital output (OEM behavior)
+    digital_only,  ///< Digital output only
+    analog_only,   ///< Analog output only
+    trigger_plug,  ///< Analog output to threshold, then digital output only
+    analog_on_digital,  ///< Analog output only on digital press
+    both_on_digital,    ///< Analog and digital output on digital press
+    analog_multiplied,  ///< Analog and digital output, analog value scaled up
+    last_trigger_mode =
+        analog_multiplied,  ///< Set to last real value of enumeration
 };
 
+/// \brief Minimum value for trigger threshold, set to Melee Z shield value
 constexpr uint8_t TRIGGER_THRESHOLD_MIN = 49;
+
+/// \brief Maximum value for trigger threshold
 constexpr uint8_t TRIGGER_THRESHOLD_MAX = 227;
 
+/** \brief Current controller configuration
+ *
+ * \note Implemented as a singleton
+ */
 struct controller_configuration {
     std::array<uint8_t, 13> mappings;
     trigger_mode l_trigger_mode;
@@ -44,15 +62,24 @@ struct controller_configuration {
     trigger_mode r_trigger_mode;
     uint8_t r_trigger_threshold_value;
 
+    /** \brief Get the configuration instance
+     * \return controller_configuration&
+     */
     static controller_configuration& get_instance();
+
     controller_configuration(controller_configuration const&) = delete;
     controller_configuration(controller_configuration&&) = delete;
     controller_configuration& operator=(const controller_configuration&) =
         delete;
     controller_configuration& operator=(controller_configuration&&) = delete;
 
+    /// \brief Persist the current configuration to flash
     void persist();
+
+    /// \brief Enter remap mode
     void swap_mappings();
+
+    /// \brief Enter trigger configuration mode
     void configure_triggers();
 
    private:
@@ -62,14 +89,21 @@ struct controller_configuration {
     static uint32_t write_page();
 };
 
+/// \brief Flash address of first possible configuration
 constexpr uint32_t CONFIG_FLASH_BASE =
     PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE;
+
+/// \brief Memory address of first possible configuration
 constexpr uint32_t CONFIG_SRAM_BASE =
     XIP_NOCACHE_NOALLOC_BASE + CONFIG_FLASH_BASE;
 
+/// \brief Number of flash pages per flash sector
 constexpr uint32_t PAGES_PER_SECTOR = FLASH_SECTOR_SIZE / FLASH_PAGE_SIZE;
+
+/// \brief Index of last page in a sector
 constexpr uint32_t LAST_PAGE = PAGES_PER_SECTOR - 1;
 
-constexpr uint32_t CONFIG_SIZE = sizeof(controller_configuration);
+/// \brief The number of bytes the controller configuration occupies
+constexpr size_t CONFIG_SIZE = sizeof(controller_configuration);
 
 #endif  // _CONFIGURATION_H_

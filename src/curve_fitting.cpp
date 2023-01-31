@@ -18,6 +18,59 @@
 
 #include "curve_fitting.hpp"
 
+template <std::size_t N>
+void convert_to_inverse(std::array<std::array<double, N>, N>& out,
+                        std::array<std::array<double, N>, N> const& in) {
+    // Fill inverse with input array
+    std::array<std::array<double, N>, N* 2> inverse = {};
+    for (std::size_t r = 0; r < N; ++r) {
+        for (std::size_t c = 0; c < N; ++c) {
+            inverse[c][r] = in[c][r];
+        }
+    }
+
+    // Find inverse
+    for (std::size_t r = 0; r < N; ++r) {
+        for (std::size_t c = 0; c < N * 2; ++c) {
+            if (c == (r + N)) {
+                inverse[c][r] = 1;
+            }
+        }
+    }
+    for (std::size_t r = N - 1; r > 0; --r) {
+        if (inverse[0][r - 1] < inverse[0][r]) {
+            for (std::size_t c = 0; c < N * 2; ++c) {
+                double temp = inverse[c][r];
+                inverse[c][r] = inverse[c][r - 1];
+                inverse[c][r - 1] = temp;
+            }
+        }
+    }
+    for (std::size_t c = 0; c < N; ++c) {
+        for (std::size_t r = 0; r < N; ++r) {
+            if (r != c) {
+                double temp = inverse[c][r] / inverse[c][c];
+                for (std::size_t i = 0; i < N * 2; ++i) {
+                    inverse[i][r] -= inverse[i][c] * temp;
+                }
+            }
+        }
+    }
+    for (std::size_t r = 0; r < N; ++r) {
+        double temp = inverse[r][r];
+        for (std::size_t c = 0; c < N * 2; ++c) {
+            inverse[c][r] = inverse[c][r] / temp;
+        }
+    }
+
+    // Populate out array
+    for (std::size_t r = 0; r < N; ++r) {
+        for (std::size_t c = 0; c < N; ++c) {
+            out[c][r] = inverse[c + N][r];
+        }
+    }
+}
+
 template <std::size_t NCoordinates, std::size_t NCoefficients>
 void fit_curve(std::array<double, NCoefficients>& coefficients,
                std::array<double, NCoordinates> const& measured_coordinates,
@@ -75,58 +128,5 @@ void fit_curve(std::array<double, NCoefficients>& coefficients,
             value += inverse[c][r] * b[c];
         }
         coefficients[r] = value;
-    }
-}
-
-template <std::size_t N>
-void convert_to_inverse(std::array<std::array<double, N>, N>& out,
-                        std::array<std::array<double, N>, N> const& in) {
-    // Fill inverse with input array
-    std::array<std::array<double, N>, N* 2> inverse = {};
-    for (std::size_t r = 0; r < N; ++r) {
-        for (std::size_t c = 0; c < N; ++c) {
-            inverse[c][r] = in[c][r];
-        }
-    }
-
-    // Find inverse
-    for (std::size_t r = 0; r < N; ++r) {
-        for (std::size_t c = 0; c < N * 2; ++c) {
-            if (c == (r + N)) {
-                inverse[c][r] = 1;
-            }
-        }
-    }
-    for (std::size_t r = N - 1; r > 0; --r) {
-        if (inverse[0][r - 1] < inverse[0][r]) {
-            for (std::size_t c = 0; c < N * 2; ++c) {
-                double temp = inverse[c][r];
-                inverse[c][r] = inverse[c][r - 1];
-                inverse[c][r - 1] = temp;
-            }
-        }
-    }
-    for (std::size_t c = 0; c < N; ++c) {
-        for (std::size_t r = 0; r < N; ++r) {
-            if (r != c) {
-                double temp = inverse[c][r] / inverse[c][c];
-                for (std::size_t i = 0; i < N * 2; ++i) {
-                    inverse[i][r] -= inverse[i][c] * temp;
-                }
-            }
-        }
-    }
-    for (std::size_t r = 0; r < N; ++r) {
-        double temp = inverse[r][r];
-        for (std::size_t c = 0; c < N * 2; ++c) {
-            inverse[c][r] = inverse[c][r] / temp;
-        }
-    }
-
-    // Populate out array
-    for (std::size_t r = 0; r < N; ++r) {
-        for (std::size_t c = 0; c < N; ++c) {
-            out[c][r] = inverse[c + N][r];
-        }
     }
 }

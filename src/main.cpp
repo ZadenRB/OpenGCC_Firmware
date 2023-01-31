@@ -416,11 +416,11 @@ void analog_main() {
 
 // Read analog triggers & apply analog trigger modes
 void read_triggers(uint8_t lt_raw, uint8_t rt_raw) {
-    apply_trigger_mode_analog(state.triggers.l, lt_raw,
+    apply_trigger_mode_analog(state.l_trigger, lt_raw,
                               config.l_trigger_threshold_value,
                               state.lt_pressed, !state.lt_is_jump,
                               config.l_trigger_mode, config.r_trigger_mode);
-    apply_trigger_mode_analog(state.triggers.r, rt_raw,
+    apply_trigger_mode_analog(state.r_trigger, rt_raw,
                               config.r_trigger_threshold_value,
                               state.rt_pressed, !state.rt_is_jump,
                               config.r_trigger_mode, config.l_trigger_mode);

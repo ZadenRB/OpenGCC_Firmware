@@ -19,12 +19,28 @@
 #ifndef _Q2X14_H_
 #define _Q2X14_H_
 
+/** \file q2x14.hpp
+ * \brief Fixed point decimal library for fast decimal math without FPU
+ * 
+ * q2x14 is one sign bit, one integer bit, and 14 decimal bits.
+ */
+
+/// \brief Q2x14 data representation
 class Q2x14 {
    private:
     signed short val;
 
    public:
+    /** \brief Construct a new Q2x14 from a short
+     * 
+     * \param in Value to convert
+     */
     Q2x14(signed short in);
+
+    /** \brief Construct a new Q2x14 object from a float
+     * 
+     * \param in Value to convert
+     */
     Q2x14(float in);
 
     Q2x14 operator+(Q2x14 const& obj);
@@ -32,6 +48,10 @@ class Q2x14 {
     Q2x14 operator*(Q2x14 const& obj);
     Q2x14 operator/(Q2x14 const& obj);
 
+    /** \brief Convert Q2x14 to a float
+     * 
+     * \return Float value
+     */
     float to_float();
 };
 

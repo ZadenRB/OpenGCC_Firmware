@@ -144,7 +144,7 @@ void send_mode(uint8_t mode) {
             tx_buf[3] = state.a_stick.y;
             tx_buf[4] = state.c_stick.x;
             tx_buf[5] = state.c_stick.y;
-            tx_buf[6] = (state.triggers.l & 0xF0) | (state.triggers.r >> 4);
+            tx_buf[6] = (state.l_trigger & 0xF0) | (state.r_trigger >> 4);
             tx_buf[7] = 0x00;
             break;
         case 0x01:
@@ -154,8 +154,8 @@ void send_mode(uint8_t mode) {
             tx_buf[2] = state.a_stick.x;
             tx_buf[3] = state.a_stick.y;
             tx_buf[4] = (state.c_stick.x & 0xF0) | (state.c_stick.y >> 4);
-            tx_buf[5] = state.triggers.l;
-            tx_buf[6] = state.triggers.r;
+            tx_buf[5] = state.l_trigger;
+            tx_buf[6] = state.r_trigger;
             tx_buf[7] = 0x00;
             break;
         case 0x02:
@@ -165,7 +165,7 @@ void send_mode(uint8_t mode) {
             tx_buf[2] = state.a_stick.x;
             tx_buf[3] = state.a_stick.y;
             tx_buf[4] = (state.c_stick.x & 0xF0) | (state.c_stick.y >> 4);
-            tx_buf[5] = (state.triggers.l & 0xF0) | (state.triggers.r >> 4);
+            tx_buf[5] = (state.l_trigger & 0xF0) | (state.r_trigger >> 4);
             tx_buf[6] = 0x00;
             tx_buf[7] = 0x00;
             break;
@@ -177,8 +177,8 @@ void send_mode(uint8_t mode) {
             tx_buf[3] = state.a_stick.y;
             tx_buf[4] = state.c_stick.x;
             tx_buf[5] = state.c_stick.y;
-            tx_buf[6] = state.triggers.l;
-            tx_buf[7] = state.triggers.r;
+            tx_buf[6] = state.l_trigger;
+            tx_buf[7] = state.r_trigger;
             break;
         case 0x04:
             length = 8;
@@ -198,8 +198,8 @@ void send_mode(uint8_t mode) {
             tx_buf[3] = state.a_stick.y;
             tx_buf[4] = state.c_stick.x;
             tx_buf[5] = state.c_stick.y;
-            tx_buf[6] = state.triggers.l;
-            tx_buf[7] = state.triggers.r;
+            tx_buf[6] = state.l_trigger;
+            tx_buf[7] = state.r_trigger;
             tx_buf[8] = 0x00;
             tx_buf[9] = 0x00;
             break;

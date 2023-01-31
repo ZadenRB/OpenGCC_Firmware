@@ -237,12 +237,12 @@ void controller_configuration::configure_triggers() {
             }
 
             // Display mode on left trigger & offset on right trigger
-            state.triggers.l = *mode;
-            state.triggers.r = *offset;
+            state.l_trigger = *mode;
+            state.r_trigger = *offset;
         } else {
             // Otherwise reset last combo and counter, and display nothing
-            state.triggers.l = 0;
-            state.triggers.r = 0;
+            state.l_trigger = 0;
+            state.r_trigger = 0;
             last_combo = 0;
             same_combo_count = 0;
         }

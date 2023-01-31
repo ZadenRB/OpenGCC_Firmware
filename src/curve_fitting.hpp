@@ -23,12 +23,32 @@
 
 #include <array>
 
+/** \file curve_fitting.hpp
+ * \brief Curve fitting functionality
+ */
+
+/** \brief Generates coefficients for an polynomial to map
+ * `measured_coefficients` to `expected_coordinates` via regression
+ *
+ * Produces coefficients for a function
+ * `coefficients[0]*x^0 + ... + coefficients[i]*x^i + ... + `
+ * `coefficients[NCoefficients-1]*x^(NCoefficients-1)`.
+ * Used to linearize Hall-Effect sensor output.
+ *
+ * \note Increasing `NCoefficients` will affect runtime of `fit_curve`, but it
+ * is a once-per-calibration operation. However, increasing `NCoefficients` will
+ * increase runtime of sensor linearization which is run on every poll, so there
+ * is a tradeoff between accuracy and performance.
+ *
+ * \tparam NCoordinates Number of measured/expected coordinates
+ * \tparam NCoefficients Number of coefficients to generate
+ * \param coefficients Output array for coefficients
+ * \param measured_coordinates The measured input coordinates
+ * \param expected_coordinates The expected output coordinates
+ */
 template <std::size_t NCoordinates, std::size_t NCoefficients>
 void fit_curve(std::array<double, NCoefficients>& coefficients,
                std::array<double, NCoordinates> const& measured_coordinates,
                std::array<double, NCoordinates> const& expected_coordinates);
-template <std::size_t N>
-void convert_to_inverse(std::array<std::array<double, N>, N>& out,
-                        std::array<std::array<double, N>, N> const& in);
 
 #endif  // _CURVE_FITTING_H_

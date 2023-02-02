@@ -30,6 +30,7 @@
  * \brief Controller calibration API
  */
 
+/// \brief Default number of steps in the calibration process
 constexpr size_t NUM_CALIBRATION_STEPS = 9;
 
 /// \brief Stick calibration implementation

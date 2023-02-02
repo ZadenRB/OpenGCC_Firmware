@@ -20,7 +20,7 @@
 #define Q2X14_H_
 
 /** \file q2x14.hpp
- * \brief Fixed point decimal library for fast decimal math without FPU
+ * \brief Fixed point decimal library for fast decimal arithmetic
  * 
  * q2x14 is one sign bit, one integer bit, and 14 decimal bits.
  */

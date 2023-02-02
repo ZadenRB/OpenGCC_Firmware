@@ -36,8 +36,10 @@ constexpr uint SAMPLES_PER_READ = 1000;
 
 /// \brief Grouping of axes for a single analog stick
 struct stick {
-    uint8_t x;  /// X axis
-    uint8_t y;  /// Y axis
+    /// \brief X axis
+    uint8_t x;
+    /// \brief Y axis
+    uint8_t y;
 };
 
 /// \brief Current controller state
@@ -50,7 +52,7 @@ struct controller_state {
      * button (X or Y)
      */
     bool lt_is_jump;
-    /// \briefhether the physical right trigger button is pressed
+    /// \brief Whether the physical right trigger button is pressed
     bool rt_pressed = false;
     /** \brief Whether the right trigger button has been remapped to a jump
      * button (X or Y)

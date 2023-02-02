@@ -24,6 +24,7 @@
 #include "hardware/flash.h"
 #include "hardware/pio.h"
 
+/// \brief Register used to reset the processor
 #define AIRCR_Register (*((volatile uint32_t *)(PPB_BASE + 0x0ED0C)))
 
 /** \file joybus_uf2.hpp

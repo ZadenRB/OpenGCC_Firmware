@@ -165,6 +165,11 @@ void controller_configuration::configure_triggers() {
     uint32_t last_combo = 0;
     uint32_t same_combo_count = 0;
 
+    // Wait for all buttons to be released
+    while ((~gpio_get_all() & PHYSICAL_BUTTONS_MASK) != 0) {
+        tight_loop_contents();
+    }
+
     while (true) {
         // Get buttons
         uint32_t physical_buttons = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
@@ -255,6 +260,13 @@ void controller_configuration::calibrate_stick(
     std::array<uint32_t, 2> const &y_raw) {
     stick_calibration calibration(display_stick);
 
+    // Wait for all buttons to be released
+    while ((~gpio_get_all() & PHYSICAL_BUTTONS_MASK) != 0) {
+        tight_loop_contents();
+    }
+
+    // TODO: Throttle inputs
+
     while (!calibration.done()) {
         calibration.display_step();
         uint32_t physical_buttons = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
@@ -282,4 +294,9 @@ void controller_configuration::calibrate_stick(
     }
 
     calibration.generate_coefficients(to_calibrate);
+}
+
+void controller_configuration::factory_reset() {
+    flash_range_erase(CONFIG_FLASH_BASE, FLASH_SECTOR_SIZE);
+    restart_controller();
 }

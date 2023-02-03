@@ -20,7 +20,6 @@
 #define CALIBRATION_H_
 
 #include <array>
-#include <set>
 #include <vector>
 
 #include "configuration.hpp"
@@ -42,7 +41,7 @@ class stick_calibration {
     std::vector<double> expected_y_coordinates;
     std::vector<double> measured_x_coordinates;
     std::vector<double> measured_y_coordinates;
-    std::set<size_t> skipped_steps;
+    std::vector<bool> skipped_steps;
     stick &display_stick;
 
    public:

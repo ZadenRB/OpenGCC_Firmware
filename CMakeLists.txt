@@ -12,6 +12,7 @@ if (TARGET tinyusb_device)
 
     target_sources(NobGCC PRIVATE
         src/board.hpp
+        src/board.cpp
         src/calibration.hpp
         src/calibration.cpp
         src/configuration.hpp

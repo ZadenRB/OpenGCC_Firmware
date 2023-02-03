@@ -24,9 +24,6 @@
 #include "hardware/flash.h"
 #include "hardware/pio.h"
 
-/// \brief Register used to reset the processor
-#define AIRCR_Register (*((volatile uint32_t *)(PPB_BASE + 0x0ED0C)))
-
 /** \file joybus_uf2.hpp
  * \brief Implementation of UF2 processing over Joybus protocol (EXPERIMENTAL)
  */
@@ -74,8 +71,5 @@ void joybus_uf2_enter();
 
 /// \brief Process a UF2 block
 void handle_joybus_uf2_block();
-
-/// \brief Restart controller
-void reset();
 
 #endif  // JOYBUS_UF2_H_

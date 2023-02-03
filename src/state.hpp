@@ -44,35 +44,35 @@ struct stick {
 
 /// \brief Current controller state
 struct controller_state {
-    /// \brief tate of digital inputs
+    /// \brief State of digital inputs
     uint16_t buttons = 0;
-    /// \brief hether the physical left trigger button is pressed
-    bool lt_pressed = false;
+    /// \brief Whether the physical left trigger button is pressed
+    bool left_trigger_pressed = false;
     /** \brief Whether the left trigger button has been remapped to a jump
      * button (X or Y)
      */
-    bool lt_is_jump;
+    bool left_trigger_jump;
     /// \brief Whether the physical right trigger button is pressed
-    bool rt_pressed = false;
+    bool right_trigger_pressed = false;
     /** \brief Whether the right trigger button has been remapped to a jump
      * button (X or Y)
      */
-    bool rt_is_jump;
-    /// \brief tate of A-stick
+    bool right_trigger_jump;
+    /// \brief State of A-stick
     stick a_stick;
-    /// \brief tate of C-stick
+    /// \brief State of C-stick
     stick c_stick;
-    /// \brief eft trigger analog value
+    /// \brief Left trigger analog value
     uint8_t l_trigger;
-    /// \brief ight trigger analog value
+    /// \brief Right trigger analog value
     uint8_t r_trigger;
-    /// \brief true`if origin has not been set, `false` if it has
+    /// \brief `true` if origin has not been set, `false` if it has
     bool origin = true;
-    /// \brief true` if safe mode is active, `false` if it is not
+    /// \brief `true` if safe mode is active, `false` if it is not
     bool safe_mode = true;
-    /// \brief tate of digital inputs of the in-progress combo
+    /// \brief State of digital inputs of the in-progress combo
     uint16_t active_combo = 0;
-    /// \brief larm ID for triggering a combo
+    /// \brief Alarm ID for triggering a combo
     alarm_id_t combo_alarm;
 };
 

@@ -18,8 +18,9 @@
 
 #include "joybus_uf2.hpp"
 
-#include "joybus.hpp"
+#include "board.hpp"
 #include "hardware/dma.h"
+#include "joybus.hpp"
 #include "pico/time.h"
 
 uf2_block block;
@@ -70,7 +71,7 @@ void joybus_uf2_enter() {
 
     // Reset once all blocks have been programmed
     sleep_ms(10);
-    reset();
+    restart_controller();
 }
 
 void handle_joybus_uf2_block() {
@@ -81,7 +82,7 @@ void handle_joybus_uf2_block() {
         tx_buf[0] = 0x01;
         send_data(1);
         sleep_ms(10);
-        reset();
+        restart_controller();
     }
 
     // Block was outside of the valid address range
@@ -91,7 +92,7 @@ void handle_joybus_uf2_block() {
         tx_buf[0] = 0x02;
         send_data(1);
         sleep_ms(10);
-        reset();
+        restart_controller();
     }
 
     // Firmware being sent was too large
@@ -100,7 +101,7 @@ void handle_joybus_uf2_block() {
         tx_buf[0] = 0x03;
         send_data(1);
         sleep_ms(10);
-        reset();
+        restart_controller();
     }
 
     // Number of blocks changed
@@ -109,7 +110,7 @@ void handle_joybus_uf2_block() {
         tx_buf[0] = 0x04;
         send_data(1);
         sleep_ms(10);
-        reset();
+        restart_controller();
     }
 
     // Block contained the UF2_FLAG_NOT_MAIN_FLASH marking
@@ -118,7 +119,7 @@ void handle_joybus_uf2_block() {
         tx_buf[0] = 0x05;
         send_data(1);
         sleep_ms(10);
-        reset();
+        restart_controller();
     }
 
     // Handle valid block
@@ -150,6 +151,3 @@ void handle_joybus_uf2_block() {
     tx_buf[0] = 0x00;
     send_data(1);
 }
-
-// Run the handler function for a combo
-void reset() { AIRCR_Register = 0x5FA0004; }

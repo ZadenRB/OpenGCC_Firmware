@@ -28,21 +28,22 @@
 ;
 ; EXECCTRL_JMP_PIN should be set to data pin
 
-.define TWO_US 16
+.define T1 14
+.define T2 16
 
 .wrap_target
 read:
-  wait 0 pin 0          [TWO_US - 1] ; Wait for data line to go low, then wait 2.5us
-  in pins, 1                         ; Read pin value
-  wait 1 pin 0                       ; Wait for data line to go high
+  wait 0 pin 0           [T1 - 1] ; Wait for data line to go low, then wait 1.75us
+  in pins, 1                      ; Read pin value
+  wait 1 pin 0                    ; Wait for data line to go high
 .wrap
 public read_stop_bit:
-  wait 1 pin 0                        ; Wait for data line to go high at end of last bit
-  wait 0 pin 0                        ; Wait for data line to go low at start of stop bit
-  wait 1 pin 0           [TWO_US - 1] ; Wait for data line to go high at end of stop bit, then delay 2us for stop bit to finish
-  irq nowait TX_WAIT_IRQ              ; Raise TX_WAIT_IRQ to signal to TX SM that stop bit has finished
-  irq wait RX_WAIT_IRQ                ; Wait on RX_WAIT_IRQ for TX SM to signal that data transmission has finished
-  jmp read                            ; Resume reading
+  wait 1 pin 0                    ; Wait for data line to go high at end of last bit
+  wait 0 pin 0                    ; Wait for data line to go low at start of stop bit
+  wait 1 pin 0           [T2 - 1] ; Wait for data line to go high at end of stop bit, then delay 2us for stop bit to finish
+  irq nowait TX_WAIT_IRQ          ; Raise TX_WAIT_IRQ to signal to TX SM that stop bit has finished
+  irq wait RX_WAIT_IRQ            ; Wait on RX_WAIT_IRQ for TX SM to signal that data transmission has finished
+  jmp read                        ; Resume reading
 
 % c-sdk {
 #include "hardware/clocks.h"
@@ -78,7 +79,7 @@ static inline void joybus_rx_program_init(PIO pio, uint sm, uint offset, uint da
 
 ; Handle communication from a GameCube input device to a GameCube console
 ;
-; Accepts the controller state in 16-bit chunks from the TX FIFO and sends them MSB first over GPIO
+; Accepts the controller state in 8-bit chunks from the TX FIFO and sends them MSB first over GPIO
 ;
 ; Clears RX_WAIT_IRQ flag after sending the controller stop bit to restart the RX state machine
 ;
@@ -92,36 +93,39 @@ static inline void joybus_rx_program_init(PIO pio, uint sm, uint offset, uint da
 ;
 ; Data pin should be set to input
 
-.define ONE_US 8
-.define TWO_US 16
+.define T1 8
+.define T2 6
+.define T3 16
+.define T4 2
 
-  mov x, ~NULL                        ; Fill scratch register X with 0xFFFFFFFF
+  pull block                      ; Get magic value that won't be pushed in regular transmission
+  out x, 32                       ; Fill scratch register X with magic value from OSR
 wait_to_transmit:
-  irq clear RX_WAIT_IRQ               ; Clear the RX_WAIT IRQ to resume the RX state machine
-  irq wait TX_SYS_IRQ                 ; Wait for CPU to clear IRQ for output
-  wait 1 irq TX_WAIT_IRQ              ; Wait for RX SM to raise IRQ indicating stop bit is done
-  set pins, 1                         ; Set pin high
-  set pindirs, 1                      ; Set to output
+  irq clear RX_WAIT_IRQ           ; Clear the RX_WAIT IRQ to resume the RX state machine
+  irq wait TX_SYS_IRQ             ; Wait for CPU to clear IRQ for output
+  wait 1 irq TX_WAIT_IRQ          ; Wait for RX SM to raise IRQ indicating stop bit is done
+  set pins, 1                     ; Set pin high
+  set pindirs, 1                  ; Set to output
 fetch_data:
-  pull noblock                        ; Pull if there is more data available
-  mov y, osr                          ; Copy OSR contents into scratch register Y
-  jmp x!=y send_data                  ; If there is more data, continue to transmit
-  nop                    [1]          ; Delay two cycles to let previous bit finish
-  set pins, 0            [TWO_US - 1] ; Drive low for 2us for stop bit
-  set pins, 1            [TWO_US - 1] ; Let high for 2us for stop bit
-  set pindirs, 0                      ; Set to input
-  jmp wait_to_transmit                ; Stop transmitting
+  pull noblock                    ; Pull if there is more data available
+  mov y, osr                      ; Copy OSR contents into scratch register Y
+  jmp x!=y send_data              ; If there is more data, continue to transmit
+  nop                    [T4 - 1] ; Wait two cycles to let previous bit finish
+  set pins, 0            [T3 - 1] ; Drive low for 2us for stop bit
+  set pins, 1            [T3 - 1] ; Let high for 2us for stop bit
+  set pindirs, 0                  ; Set to input
+  jmp wait_to_transmit            ; Stop transmitting
 send_data:
-  out null, 24                        ; Discard 24 MSBs to get the actual byte left-aligned
-  set y, 7                            ; Setup bit counter
+  out null, 24                    ; Discard 24 MSBs to get the actual byte left-aligned
+  set y, 7                        ; Setup bit counter
 send_bit:
-  set pins, 0            [ONE_US - 1] ; Drive low at start of bit
-  out pins, 1            [TWO_US - 1] ; Drive low/let high based on OSR contents
-  set pins, 1            [ONE_US - 8] ; Let high at end of bit
-  jmp y-- delay                       ; If this isn't the last bit, delay extra cycles
-  jmp fetch_data                      ; If this is the last bit, fetch the next byte
+  set pins, 0            [T1 - 1] ; Drive low at start of bit
+  out pins, 1            [T3 - 1] ; Drive low/let high based on OSR contents
+  set pins, 1            [T1 - 8] ; Let high at end of bit
+  jmp y-- delay                   ; If this isn't the last bit, delay extra cycles
+  jmp fetch_data                  ; If this is the last bit, fetch the next byte
 delay:
-  jmp send_bit           [5]          ; Delay 5 cycles to keep timing with the 8 cycles between bytes
+  jmp send_bit           [T2 - 1] ; Delay to keep timing with the 8 cycles between bytes
 
 % c-sdk {
 #include "hardware/clocks.h"

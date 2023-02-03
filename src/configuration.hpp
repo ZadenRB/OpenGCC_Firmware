@@ -132,6 +132,9 @@ struct controller_configuration {
                          std::array<uint32_t, 2> const &x_raw,
                          std::array<uint32_t, 2> const &y_raw);
 
+    /// \brief Erase all stored configurations
+    static void factory_reset();
+
    private:
     controller_configuration();
 

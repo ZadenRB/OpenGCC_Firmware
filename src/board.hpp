@@ -112,4 +112,10 @@ constexpr uint TRIGGER_ADC_MASK =
  */
 constexpr uint32_t INTERCORE_SIGNAL = 0x623F16E4;
 
+/// \brief Magic number for TX PIO to pull when FIFO is empty
+constexpr uint32_t FIFO_EMPTY = 0x00FF00FF;
+
+/// \brief Restart the controller
+void restart_controller();
+
 #endif  // BOARD_H_

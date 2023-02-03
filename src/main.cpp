@@ -18,8 +18,6 @@
 
 #include "main.hpp"
 
-#include <cmath>
-
 #include "hardware/adc.h"
 #include "hardware/clocks.h"
 #include "hardware/dma.h"
@@ -109,9 +107,11 @@ int main() {
     channel_config_set_dreq(&tx_config, pio_get_dreq(joybus_pio, tx_sm, true));
     dma_channel_set_config(tx_dma, &tx_config, false);
 
+    pio_sm_put_blocking(joybus_pio, tx_sm, FIFO_EMPTY);
+
     // Load configuration
-    state.lt_is_jump = ((1 << config.mappings[6]) & JUMP_MASK) != 0;
-    state.rt_is_jump = ((1 << config.mappings[5]) & JUMP_MASK) != 0;
+    state.left_trigger_jump = ((1 << config.mappings[6]) & JUMP_MASK) != 0;
+    state.right_trigger_jump = ((1 << config.mappings[5]) & JUMP_MASK) != 0;
 
     irq_set_enabled(PIO0_IRQ_0, true);
 
@@ -151,8 +151,8 @@ void read_digital(uint16_t physical_buttons) {
     remap(physical_buttons, remapped_buttons, DPAD_LEFT, config.mappings[0]);
 
     // If triggers are pressed (post remapping)
-    state.lt_pressed = (remapped_buttons & (1 << LT_DIGITAL)) != 0;
-    state.rt_pressed = (remapped_buttons & (1 << RT_DIGITAL)) != 0;
+    state.left_trigger_pressed = (remapped_buttons & (1 << LT_DIGITAL)) != 0;
+    state.right_trigger_pressed = (remapped_buttons & (1 << RT_DIGITAL)) != 0;
 
     // Apply digital trigger modes
     apply_trigger_mode_digital(remapped_buttons, LT_DIGITAL,
@@ -216,6 +216,7 @@ void check_combos(uint32_t physical_buttons) {
             case (1 << START) | (1 << B) | (1 << Z):
             case (1 << START) | (1 << B) | (1 << LT_DIGITAL):
             case (1 << START) | (1 << B) | (1 << RT_DIGITAL):
+            case (1 << START) | (1 << Y) | (1 << Z):
                 state.active_combo = physical_buttons;
                 state.combo_alarm =
                     add_alarm_in_ms(3000, execute_combo, NULL, false);
@@ -230,18 +231,24 @@ int64_t execute_combo(alarm_id_t alarm_id, void *user_data) {
         case (1 << START) | (1 << Y) | (1 << A) | (1 << Z):
             toggle_safe_mode();
             break;
-        case (1 << START) | (1 << B) | (1 << A):
+        case (1 << START) | (1 << X) | (1 << A):
             config.swap_mappings();
             break;
-        case (1 << START) | (1 << B) | (1 << Z):
+        case (1 << START) | (1 << X) | (1 << Z) | (1 << LT_DIGITAL) |
+            (1 << RT_DIGITAL):
             config.configure_triggers();
             break;
-        case (1 << START) | (1 << B) | (1 << LT_DIGITAL):
+        case (1 << START) | (1 << X) | (1 << LT_DIGITAL):
             config.calibrate_stick(config.a_stick, state.c_stick, ax_raw,
                                    ay_raw);
-        case (1 << START) | (1 << B) | (1 << RT_DIGITAL):
+            break;
+        case (1 << START) | (1 << X) | (1 << RT_DIGITAL):
             config.calibrate_stick(config.c_stick, state.a_stick, cx_raw,
                                    cy_raw);
+            break;
+        case (1 << START) | (1 << Y) | (1 << Z):
+            controller_configuration::factory_reset();
+            break;
     }
     state.active_combo = 0;
     return 0;
@@ -423,14 +430,14 @@ void analog_main() {
 
 // Read analog triggers & apply analog trigger modes
 void read_triggers(uint8_t lt_raw, uint8_t rt_raw) {
-    apply_trigger_mode_analog(state.l_trigger, lt_raw,
-                              config.l_trigger_threshold_value,
-                              state.lt_pressed, !state.lt_is_jump,
-                              config.l_trigger_mode, config.r_trigger_mode);
-    apply_trigger_mode_analog(state.r_trigger, rt_raw,
-                              config.r_trigger_threshold_value,
-                              state.rt_pressed, !state.rt_is_jump,
-                              config.r_trigger_mode, config.l_trigger_mode);
+    apply_trigger_mode_analog(
+        state.l_trigger, lt_raw, config.l_trigger_threshold_value,
+        state.left_trigger_pressed, !state.left_trigger_jump,
+        config.l_trigger_mode, config.r_trigger_mode);
+    apply_trigger_mode_analog(
+        state.r_trigger, rt_raw, config.r_trigger_threshold_value,
+        state.right_trigger_pressed, !state.right_trigger_jump,
+        config.r_trigger_mode, config.l_trigger_mode);
 }
 
 // Modify analog value based on the trigger mode
@@ -468,7 +475,7 @@ void apply_trigger_mode_analog(uint8_t &out, uint8_t analog_value,
                 out = 0;
             } else {
                 float multiplier = (threshold_value * 0.01124f) + 0.44924f;
-                float multiplied_value = round(analog_value * multiplier);
+                float multiplied_value = analog_value * multiplier;
                 if (multiplied_value > 255) {
                     out = 255 * enable_analog;
                 } else {

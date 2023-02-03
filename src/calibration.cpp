@@ -33,28 +33,31 @@ void stick_calibration::display_step() {
 void stick_calibration::undo_measurement() {
     measured_x_coordinates.pop_back();
     measured_y_coordinates.pop_back();
-    skipped_steps.erase(current_step);
+    skipped_steps.pop_back();
     --current_step;
 }
 
 void stick_calibration::record_measurement(double x, double y) {
     measured_x_coordinates.push_back(x);
     measured_y_coordinates.push_back(y);
+    skipped_steps.push_back(false);
     ++current_step;
 }
 
 void stick_calibration::skip_measurement() {
     measured_x_coordinates.push_back(0);
     measured_y_coordinates.push_back(0);
-    skipped_steps.insert(current_step);
+    skipped_steps.push_back(true);
     ++current_step;
 }
 
 void stick_calibration::remove_skipped_coordinates(
     std::vector<double> &coordinates) {
-    for (auto i = skipped_steps.rbegin(); i != skipped_steps.rend(); ++i) {
-        coordinates[*i] = coordinates.back();
-        coordinates.pop_back();
+    for (size_t i = coordinates.size(); i >= 0; --i) {
+        if (skipped_steps[i]) {
+            coordinates[i] = coordinates.back();
+            coordinates.pop_back();
+        }
     }
 }
 

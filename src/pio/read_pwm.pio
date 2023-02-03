@@ -26,24 +26,24 @@
 ; EXECCTRL_JMP_PIN should be set to whichever pin is connected to the PWM input
 
 start:
-    wait 0 PIN 0            ; wait for the pin to go low
-    wait 1 PIN 0        [4] ; wait for the pin to go high, delay for 4 cycles here so that the first high pulse is off by 6 cycles, as future iterations are
+    wait 0 pin 0            ; wait for the pin to go low
+    wait 1 pin 0        [4] ; wait for the pin to go high, delay for 4 cycles here so that the first high pulse is off by 6 cycles, as future iterations are
 .wrap_target
-    mov X, ~NULL            ; high is 0xFFFFFFFF
-    mov Y, ~NULL            ; low is 0xFFFFFFFF
+    mov x, ~null            ; high is 0xFFFFFFFF
+    mov y, ~null            ; low is 0xFFFFFFFF
 count_high:
-    jmp X-- check_high      ; decrement high pulse width counter
+    jmp x-- check_high      ; decrement high pulse width counter
     jmp start               ; if the counter hits 0, abort & wait for another pulse to start
 check_high:
-    jmp PIN count_high      ; if pin is still high, continue to count high pulse width
+    jmp pin count_high      ; if pin is still high, continue to count high pulse width
 count_low:
-    jmp PIN send_sample     ; if the pin has gone high again, send the sample and restart counting
-    jmp Y-- count_low       ; decrement low pulse width counter
+    jmp pin send_sample     ; if the pin has gone high again, send the sample and restart counting
+    jmp y-- count_low       ; decrement low pulse width counter
     jmp start               ; if the counter hits 0, abort & wait for another pulse to start
 send_sample:
-    mov ISR, ~X             ; move the high pulse width counter into the ISR
+    mov isr, ~x             ; move the high pulse width counter into the ISR
     push NOBLOCK            ; push the high pulse width counter into the RX FIFO
-    mov ISR, ~Y             ; push the low pulse width counter into the ISR
+    mov isr, ~y             ; push the low pulse width counter into the ISR
     push NOBLOCK            ; push the low pulse width counter into the RX FIFO
 .wrap
 

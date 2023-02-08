@@ -56,25 +56,17 @@ void apply_trigger_mode_digital(uint16_t& buttons, uint8_t bit_to_set,
 /** \brief Check current physical button states to see if a combo is being
  * pressed
  *
- * If a valid combo is pressed, starts a timer to trigger an interrupt to
- * execute the combo's handler.
+ * If a valid combo is pressed, starts a countdown to execute the combo.
  *
  * If a valid combo was pressed, checks if it still is. If it is not, cancels
- * the timer.
+ * the combo timer.
  *
  * \param physical_buttons Physical button states
  */
 void check_combos(uint32_t physical_buttons);
-int64_t execute_combo(alarm_id_t alarm_id, void* user_data);
-void toggle_safe_mode();
 
-/** \brief Executes the current combo (triggered by timer interrupt)
- *
- * \param alarm_id
- * \param user_data
- * \return int64_t
- */
-int64_t execute_combo(alarm_id_t alarm_id, void* user_data);
+/// \brief Executes the current combo
+void execute_combo();
 
 /// \brief Toggle safe mode on or off
 void toggle_safe_mode();
@@ -113,9 +105,9 @@ void apply_trigger_mode_analog(uint8_t& out, uint8_t analog_value,
  * \param cx_raw Location of PWM high / low data for C-stick X
  * \param cy_raw Location of PWM high / low data for C-stick Y
  */
-void read_sticks(std::array<uint32_t, 2> const& ax_raw,
-                 std::array<uint32_t, 2> const& ay_raw,
-                 std::array<uint32_t, 2> const& cx_raw,
-                 std::array<uint32_t, 2> const& cy_raw);
+void read_sticks(const std::array<uint32_t, 2>& ax_raw,
+                 const std::array<uint32_t, 2>& ay_raw,
+                 const std::array<uint32_t, 2>& cx_raw,
+                 const std::array<uint32_t, 2>& cy_raw);
 
 #endif  // MAIN_H_

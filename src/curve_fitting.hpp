@@ -35,7 +35,7 @@
  */
 template <std::size_t N>
 void convert_to_inverse(std::array<std::array<double, N>, N>& out,
-                        std::array<std::array<double, N>, N> const& in) {
+                        const std::array<std::array<double, N>, N>& in) {
     // Fill inverse with input array
     std::array<std::array<double, N>, N* 2> inverse = {};
     for (std::size_t r = 0; r < N; ++r) {
@@ -105,8 +105,8 @@ void convert_to_inverse(std::array<std::array<double, N>, N>& out,
  */
 template <std::size_t NCoefficients>
 void fit_curve(std::array<double, NCoefficients>& coefficients,
-               std::vector<double> const& measured_coordinates,
-               std::vector<double> const& expected_coordinates) {
+               const std::vector<double>& measured_coordinates,
+               const std::vector<double>& expected_coordinates) {
     assert(measured_coordinates.size() == expected_coordinates.size());
     size_t num_coordinates = measured_coordinates.size();
 

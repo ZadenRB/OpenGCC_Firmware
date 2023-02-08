@@ -29,7 +29,6 @@
 #include "read_pwm.pio.h"
 
 controller_state state;
-controller_configuration &config = controller_configuration::get_instance();
 
 PIO joybus_pio;
 uint rx_sm;
@@ -80,6 +79,9 @@ int main() {
     gpio_pull_up(Y);
     gpio_pull_up(START);
 
+    // Load configuration
+    controller_configuration &config = controller_configuration::get_instance();
+
     // Joybus PIO
     joybus_pio = pio0;
 
@@ -109,7 +111,6 @@ int main() {
 
     pio_sm_put_blocking(joybus_pio, tx_sm, FIFO_EMPTY);
 
-    // Load configuration
     state.left_trigger_jump = ((1 << config.mappings[6]) & JUMP_MASK) != 0;
     state.right_trigger_jump = ((1 << config.mappings[5]) & JUMP_MASK) != 0;
 
@@ -133,6 +134,8 @@ int main() {
 
 // Read buttons
 void read_digital(uint16_t physical_buttons) {
+    controller_configuration &config = controller_configuration::get_instance();
+
     // Output sent to console
     uint16_t remapped_buttons = (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
 
@@ -195,9 +198,13 @@ void check_combos(uint32_t physical_buttons) {
     // Check if the active combo is still being pressed
     if (state.active_combo != 0) {
         if (state.active_combo == physical_buttons) {
+            if (absolute_time_diff_us(state.combo_trigger_timestamp,
+                                      get_absolute_time()) > 0) {
+                execute_combo();
+            }
             return;
         } else {
-            cancel_alarm(state.combo_alarm);
+            state.combo_trigger_timestamp = nil_time;
             state.active_combo = 0;
         }
     }
@@ -205,37 +212,39 @@ void check_combos(uint32_t physical_buttons) {
     // Check if the combo is to toggle safe mode
     if (physical_buttons == ((1 << START) | (1 << Y) | (1 << A) | (1 << Z))) {
         state.active_combo = physical_buttons;
-        state.combo_alarm = add_alarm_in_ms(3000, execute_combo, NULL, false);
+        state.combo_trigger_timestamp = make_timeout_time_ms(3000);
         return;
     }
 
     // If not in safe mode, check other combos
     if (!state.safe_mode) {
         switch (physical_buttons) {
-            case (1 << START) | (1 << B) | (1 << A):
-            case (1 << START) | (1 << B) | (1 << Z):
-            case (1 << START) | (1 << B) | (1 << LT_DIGITAL):
-            case (1 << START) | (1 << B) | (1 << RT_DIGITAL):
+            case (1 << START) | (1 << X) | (1 << A):
+            case (1 << START) | (1 << X) | (1 << Z):
+            case (1 << START) | (1 << X) | (1 << LT_DIGITAL):
+            case (1 << START) | (1 << X) | (1 << RT_DIGITAL):
             case (1 << START) | (1 << Y) | (1 << Z):
                 state.active_combo = physical_buttons;
-                state.combo_alarm =
-                    add_alarm_in_ms(3000, execute_combo, NULL, false);
+                state.combo_trigger_timestamp = make_timeout_time_ms(3000);
                 break;
         }
     }
 }
 
 // Run the handler function for a combo
-int64_t execute_combo(alarm_id_t alarm_id, void *user_data) {
+void execute_combo() {
+    controller_configuration &config = controller_configuration::get_instance();
+
+    state.display_alert();
+
     switch (state.active_combo) {
         case (1 << START) | (1 << Y) | (1 << A) | (1 << Z):
-            toggle_safe_mode();
+            state.toggle_safe_mode();
             break;
         case (1 << START) | (1 << X) | (1 << A):
             config.swap_mappings();
             break;
-        case (1 << START) | (1 << X) | (1 << Z) | (1 << LT_DIGITAL) |
-            (1 << RT_DIGITAL):
+        case (1 << START) | (1 << X) | (1 << Z):
             config.configure_triggers();
             break;
         case (1 << START) | (1 << X) | (1 << LT_DIGITAL):
@@ -250,17 +259,12 @@ int64_t execute_combo(alarm_id_t alarm_id, void *user_data) {
             controller_configuration::factory_reset();
             break;
     }
+
     state.active_combo = 0;
-    return 0;
+    state.combo_trigger_timestamp = nil_time;
 }
 
-// Toggle safe mode
-void toggle_safe_mode() { state.safe_mode = !state.safe_mode; }
-
 void analog_main() {
-    // Enable lockout
-    multicore_lockout_victim_init();
-
     // Set PWM inputs as pull up
     gpio_pull_up(AX);
     gpio_pull_up(AY);
@@ -422,6 +426,9 @@ void analog_main() {
     read_sticks(ax_raw, ay_raw, cx_raw, cy_raw);
     multicore_fifo_push_blocking(INTERCORE_SIGNAL);
 
+    // Enable lockout
+    multicore_lockout_victim_init();
+
     while (1) {
         read_triggers(triggers_raw[0], triggers_raw[1]);
         read_sticks(ax_raw, ay_raw, cx_raw, cy_raw);
@@ -430,6 +437,8 @@ void analog_main() {
 
 // Read analog triggers & apply analog trigger modes
 void read_triggers(uint8_t lt_raw, uint8_t rt_raw) {
+    controller_configuration &config = controller_configuration::get_instance();
+
     apply_trigger_mode_analog(
         state.l_trigger, lt_raw, config.l_trigger_threshold_value,
         state.left_trigger_pressed, !state.left_trigger_jump,
@@ -445,6 +454,11 @@ void apply_trigger_mode_analog(uint8_t &out, uint8_t analog_value,
                                uint8_t threshold_value, bool digital_value,
                                bool enable_analog, trigger_mode mode,
                                trigger_mode other_mode) {
+    // Prevent accidental trigger-tricking
+    if (analog_value <= TRIGGER_TRICK_THRESHOLD) {
+        analog_value = 0;
+    }
+
     switch (mode) {
         case digital_only:
             out = 0;
@@ -487,10 +501,10 @@ void apply_trigger_mode_analog(uint8_t &out, uint8_t analog_value,
     }
 }
 
-void read_sticks(std::array<uint32_t, 2> const &ax_raw,
-                 std::array<uint32_t, 2> const &ay_raw,
-                 std::array<uint32_t, 2> const &cx_raw,
-                 std::array<uint32_t, 2> const &cy_raw) {
+void read_sticks(const std::array<uint32_t, 2> &ax_raw,
+                 const std::array<uint32_t, 2> &ay_raw,
+                 const std::array<uint32_t, 2> &cx_raw,
+                 const std::array<uint32_t, 2> &cy_raw) {
     uint ax_high_total = 0;
     uint ax_low_total = 0;
     uint ay_high_total = 0;

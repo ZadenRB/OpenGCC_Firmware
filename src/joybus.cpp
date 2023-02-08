@@ -22,7 +22,6 @@
 #include "hardware/pio.h"
 #include "joybus.pio.h"
 #include "joybus_uf2.hpp"
-#include "pico/time.h"
 #include "state.hpp"
 
 std::array<uint8_t, 10> tx_buf;
@@ -53,7 +52,7 @@ void handle_console_request() {
         // otherwise assume we caught the middle of a command & return
         absolute_time_t timeout_at = make_timeout_time_us(48);
         while (pio_sm_is_rx_fifo_empty(joybus_pio, rx_sm)) {
-            if (absolute_time_diff_us(get_absolute_time(), timeout_at) < 0) {
+            if (absolute_time_diff_us(timeout_at, get_absolute_time()) > 0) {
                 // Clear ISR (mov isr, null)
                 pio_sm_exec(joybus_pio, rx_sm,
                             pio_encode_mov(pio_isr, pio_null));
@@ -69,7 +68,6 @@ void handle_console_request() {
 
     switch (cmd) {
         case 0xFF:
-            // TODO: reset
         case 0x00: {
             // Device identifier
             tx_buf[0] = 0x09;
@@ -88,7 +86,6 @@ void handle_console_request() {
             request[0] = 0x05;
             break;
         case 0x42:
-            // TODO: calibrate
         case 0x43:
             request[0] = 0x05;
             break;

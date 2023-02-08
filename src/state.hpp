@@ -34,6 +34,11 @@
  */
 constexpr uint SAMPLES_PER_READ = 1000;
 
+/** \brief Threshold below which trigger will report 0 to prevent
+ * trigger-tricking
+ */
+constexpr uint8_t TRIGGER_TRICK_THRESHOLD = 5;
+
 /// \brief Grouping of axes for a single analog stick
 struct stick {
     /// \brief X axis
@@ -73,7 +78,13 @@ struct controller_state {
     /// \brief State of digital inputs of the in-progress combo
     uint16_t active_combo = 0;
     /// \brief Alarm ID for triggering a combo
-    alarm_id_t combo_alarm;
+    absolute_time_t combo_trigger_timestamp = nil_time;
+
+    /// \brief Max out triggers for 1.5 seconds to indicate an alert
+    void display_alert();
+
+    /// \brief Toggle safe mode
+    void toggle_safe_mode();
 };
 
 /** \brief Global state

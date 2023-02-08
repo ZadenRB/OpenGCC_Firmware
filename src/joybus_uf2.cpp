@@ -21,7 +21,6 @@
 #include "board.hpp"
 #include "hardware/dma.h"
 #include "joybus.hpp"
-#include "pico/time.h"
 
 uf2_block block;
 uint32_t num_blocks;
@@ -70,7 +69,7 @@ void joybus_uf2_enter() {
     }
 
     // Reset once all blocks have been programmed
-    sleep_ms(10);
+    busy_wait_ms(10);
     restart_controller();
 }
 
@@ -81,7 +80,7 @@ void handle_joybus_uf2_block() {
         // Send error
         tx_buf[0] = 0x01;
         send_data(1);
-        sleep_ms(10);
+        busy_wait_ms(10);
         restart_controller();
     }
 
@@ -91,7 +90,7 @@ void handle_joybus_uf2_block() {
         // Send error
         tx_buf[0] = 0x02;
         send_data(1);
-        sleep_ms(10);
+        busy_wait_ms(10);
         restart_controller();
     }
 
@@ -100,7 +99,7 @@ void handle_joybus_uf2_block() {
         // Send error
         tx_buf[0] = 0x03;
         send_data(1);
-        sleep_ms(10);
+        busy_wait_ms(10);
         restart_controller();
     }
 
@@ -109,7 +108,7 @@ void handle_joybus_uf2_block() {
         // Send error
         tx_buf[0] = 0x04;
         send_data(1);
-        sleep_ms(10);
+        busy_wait_ms(10);
         restart_controller();
     }
 
@@ -118,7 +117,7 @@ void handle_joybus_uf2_block() {
         // Send error
         tx_buf[0] = 0x05;
         send_data(1);
-        sleep_ms(10);
+        busy_wait_ms(10);
         restart_controller();
     }
 

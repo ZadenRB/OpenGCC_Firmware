@@ -31,6 +31,7 @@
  * loading, modifying, and persisting the settings. This includes:
  * * Button mappings
  * * Trigger modes
+ * * Calibration
  */
 
 /// \brief Enumeration of trigger modes
@@ -106,8 +107,8 @@ struct controller_configuration {
      */
     static controller_configuration &get_instance();
 
-    controller_configuration(controller_configuration const &) = delete;
-    controller_configuration(controller_configuration &&) = delete;
+    controller_configuration(const controller_configuration &) = delete;
+    controller_configuration(const controller_configuration &&) = delete;
     controller_configuration &operator=(const controller_configuration &) =
         delete;
     controller_configuration &operator=(controller_configuration &&) = delete;
@@ -129,8 +130,8 @@ struct controller_configuration {
      * \param y_raw Address to read y values from
      */
     void calibrate_stick(stick_coefficients &to_calibrate, stick &display_stick,
-                         std::array<uint32_t, 2> const &x_raw,
-                         std::array<uint32_t, 2> const &y_raw);
+                         const std::array<uint32_t, 2> &x_raw,
+                         const std::array<uint32_t, 2> &y_raw);
 
     /// \brief Erase all stored configurations
     static void factory_reset();

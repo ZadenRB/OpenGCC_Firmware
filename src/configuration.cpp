@@ -27,53 +27,69 @@ controller_configuration::controller_configuration() {
     uint32_t read_page = controller_configuration::read_page();
     if (read_page == -1) {
         // If there's no stored configuration, load defaults & persist
-        mappings[0] = 0b0000;
-        mappings[1] = 0b0001;
-        mappings[2] = 0b0010;
-        mappings[3] = 0b0011;
-        mappings[4] = 0b0100;
-        mappings[5] = 0b0101;
-        mappings[6] = 0b0110;
-        mappings[7] = 0b0000;
-        mappings[8] = 0b1000;
-        mappings[9] = 0b1001;
-        mappings[10] = 0b1010;
-        mappings[11] = 0b1011;
-        mappings[12] = 0b1100;
-        l_trigger_mode = both;
-        l_trigger_threshold_value = TRIGGER_THRESHOLD_MIN;
-        r_trigger_mode = both;
-        r_trigger_threshold_value = TRIGGER_THRESHOLD_MIN;
+        // Set up default profile
+        configuration_profile default_profile;
+        default_profile.mappings[0] = 0b0000;
+        default_profile.mappings[1] = 0b0001;
+        default_profile.mappings[2] = 0b0010;
+        default_profile.mappings[3] = 0b0011;
+        default_profile.mappings[4] = 0b0100;
+        default_profile.mappings[5] = 0b0101;
+        default_profile.mappings[6] = 0b0110;
+        default_profile.mappings[7] = 0b0000;
+        default_profile.mappings[8] = 0b1000;
+        default_profile.mappings[9] = 0b1001;
+        default_profile.mappings[10] = 0b1010;
+        default_profile.mappings[11] = 0b1011;
+        default_profile.mappings[12] = 0b1100;
+        default_profile.l_trigger_mode = both;
+        default_profile.l_trigger_threshold_value = TRIGGER_THRESHOLD_MIN;
+        default_profile.r_trigger_mode = both;
+        default_profile.r_trigger_threshold_value = TRIGGER_THRESHOLD_MIN;
+
+        // Set all profiles to default
+        for (size_t i = 0; i < profiles.size(); ++i) {
+            profiles[i] = default_profile;
+        }
+        current_profile = 0;
+
         // TODO: add default coefficient values
+
+        // Persist
         persist();
+        return;
     }
 
     // Load stored configuration
     controller_configuration *config_in_flash =
         reinterpret_cast<controller_configuration *>(
             CONFIG_SRAM_BASE + (read_page * FLASH_PAGE_SIZE));
-    mappings[0] = config_in_flash->mappings[0];
-    mappings[1] = config_in_flash->mappings[1];
-    mappings[2] = config_in_flash->mappings[2];
-    mappings[3] = config_in_flash->mappings[3];
-    mappings[4] = config_in_flash->mappings[4];
-    mappings[5] = config_in_flash->mappings[5];
-    mappings[6] = config_in_flash->mappings[6];
-    mappings[7] = config_in_flash->mappings[7];
-    mappings[8] = config_in_flash->mappings[8];
-    mappings[9] = config_in_flash->mappings[9];
-    mappings[10] = config_in_flash->mappings[10];
-    mappings[11] = config_in_flash->mappings[11];
-    mappings[12] = config_in_flash->mappings[12];
-    l_trigger_mode = config_in_flash->l_trigger_mode;
-    l_trigger_threshold_value = config_in_flash->l_trigger_threshold_value;
-    r_trigger_mode = config_in_flash->r_trigger_mode;
-    r_trigger_threshold_value = config_in_flash->r_trigger_threshold_value;
+    profiles = config_in_flash->profiles;
+    current_profile = config_in_flash->current_profile;
+    // TODO: Load coefficients
 }
 
 controller_configuration &controller_configuration::get_instance() {
     static controller_configuration instance;
     return instance;
+}
+
+uint32_t controller_configuration::read_page() {
+    for (uint32_t page = 0; page < PAGES_PER_SECTOR; ++page) {
+        uint32_t read_address = CONFIG_SRAM_BASE + (page * FLASH_PAGE_SIZE);
+        if (*reinterpret_cast<uint8_t *>(read_address) == 0xFF) {
+            // Return last initialized flash (-1 if no flash is initialized)
+            --page;
+            return page;
+        }
+    }
+
+    // If we never find uninitialized flash, return the last page
+    return LAST_PAGE;
+}
+
+uint32_t controller_configuration::write_page() {
+    return (controller_configuration::read_page() + 1) % PAGES_PER_SECTOR;
 }
 
 void controller_configuration::persist() {
@@ -96,22 +112,33 @@ void controller_configuration::persist() {
                         buf.data(), FLASH_PAGE_SIZE);
 }
 
-uint32_t controller_configuration::read_page() {
-    for (uint32_t page = 0; page < PAGES_PER_SECTOR; ++page) {
-        uint32_t read_address = CONFIG_SRAM_BASE + (page * FLASH_PAGE_SIZE);
-        if (*reinterpret_cast<uint8_t *>(read_address) == 0xFF) {
-            // Return last initialized flash (-1 if no flash is initialized)
-            --page;
-            return page;
-        }
-    }
-
-    // If we never find uninitialized flash, return the last page
-    return LAST_PAGE;
+std::array<uint8_t, 13> controller_configuration::mappings() {
+    return profiles[current_profile].mappings;
 }
 
-uint32_t controller_configuration::write_page() {
-    return (controller_configuration::read_page() + 1) % PAGES_PER_SECTOR;
+uint8_t controller_configuration::mapping(size_t index) {
+    return profiles[current_profile].mappings[index];
+}
+
+trigger_mode controller_configuration::l_trigger_mode() {
+    return profiles[current_profile].l_trigger_mode;
+}
+
+uint8_t controller_configuration::l_trigger_threshold_value() {
+    return profiles[current_profile].l_trigger_threshold_value;
+}
+
+trigger_mode controller_configuration::r_trigger_mode() {
+    return profiles[current_profile].r_trigger_mode;
+}
+
+uint8_t controller_configuration::r_trigger_threshold_value() {
+    return profiles[current_profile].r_trigger_threshold_value;
+}
+
+void controller_configuration::select_profile(size_t profile) {
+    current_profile = profile;
+    persist();
 }
 
 void controller_configuration::swap_mappings() {
@@ -132,35 +159,38 @@ void controller_configuration::swap_mappings() {
             continue;
         }
 
-        if (first_button == 0 &&
+        if (first_button == 0 && physical_buttons != 0 &&
             (physical_buttons & (physical_buttons - 1)) == 0) {
             // Wait for first single button press
             first_button = physical_buttons;
             buttons_released = false;
-        } else if (second_button == 0 &&
+        } else if (second_button == 0 && physical_buttons != 0 &&
                    (physical_buttons & (physical_buttons - 1)) == 0) {
             // Wait for second single button press
             second_button = physical_buttons;
-            buttons_released = false;
-        } else if (first_button != 0 && second_button != 0) {
+
             // Once both buttons are selected, swap
             // Get first button's mapping
             uint8_t first_mapping_index = 0;
             while ((first_button >> first_mapping_index) > 1) {
                 ++first_mapping_index;
             }
-            uint8_t first_mapping = mappings[first_mapping_index];
+            uint8_t first_mapping =
+                profiles[current_profile].mappings[first_mapping_index];
 
             // Get second button's mapping
             uint8_t second_mapping_index = 0;
             while ((second_button >> second_mapping_index) > 1) {
                 ++second_mapping_index;
             }
-            uint8_t second_mapping = mappings[second_mapping_index];
+            uint8_t second_mapping =
+                profiles[current_profile].mappings[second_mapping_index];
 
             // Swap mappings
-            mappings[first_mapping_index] = second_mapping;
-            mappings[second_mapping_index] = first_mapping;
+            profiles[current_profile].mappings[first_mapping_index] =
+                second_mapping;
+            profiles[current_profile].mappings[second_mapping_index] =
+                first_mapping;
             persist();
             state.display_alert();
             return;
@@ -209,11 +239,11 @@ void controller_configuration::configure_triggers() {
             trigger_mode *mode;
             uint8_t *offset;
             if (trigger_pressed == (1 << LT_DIGITAL)) {
-                mode = &l_trigger_mode;
-                offset = &l_trigger_threshold_value;
+                mode = &(profiles[current_profile].l_trigger_mode);
+                offset = &(profiles[current_profile].l_trigger_threshold_value);
             } else if (trigger_pressed == (1 << RT_DIGITAL)) {
-                mode = &r_trigger_mode;
-                offset = &r_trigger_threshold_value;
+                mode = &(profiles[current_profile].r_trigger_mode);
+                offset = &(profiles[current_profile].r_trigger_threshold_value);
             }
 
             // Mask out trigger buttons

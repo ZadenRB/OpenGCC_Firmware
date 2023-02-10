@@ -37,7 +37,7 @@ template <std::size_t N>
 void convert_to_inverse(std::array<std::array<double, N>, N>& out,
                         const std::array<std::array<double, N>, N>& in) {
     // Fill inverse with input array
-    std::array<std::array<double, N>, N* 2> inverse = {};
+    std::array<std::array<double, N>, 2 * N> inverse = {};
     for (std::size_t r = 0; r < N; ++r) {
         for (std::size_t c = 0; c < N; ++c) {
             inverse[c][r] = in[c][r];
@@ -46,7 +46,7 @@ void convert_to_inverse(std::array<std::array<double, N>, N>& out,
 
     // Find inverse
     for (std::size_t r = 0; r < N; ++r) {
-        for (std::size_t c = 0; c < N * 2; ++c) {
+        for (std::size_t c = 0; c < 2 * N; ++c) {
             if (c == (r + N)) {
                 inverse[c][r] = 1;
             }
@@ -54,7 +54,7 @@ void convert_to_inverse(std::array<std::array<double, N>, N>& out,
     }
     for (std::size_t r = N - 1; r > 0; --r) {
         if (inverse[0][r - 1] < inverse[0][r]) {
-            for (std::size_t c = 0; c < N * 2; ++c) {
+            for (std::size_t c = 0; c < 2 * N; ++c) {
                 double temp = inverse[c][r];
                 inverse[c][r] = inverse[c][r - 1];
                 inverse[c][r - 1] = temp;
@@ -65,7 +65,7 @@ void convert_to_inverse(std::array<std::array<double, N>, N>& out,
         for (std::size_t r = 0; r < N; ++r) {
             if (r != c) {
                 double temp = inverse[c][r] / inverse[c][c];
-                for (std::size_t i = 0; i < N * 2; ++i) {
+                for (std::size_t i = 0; i < 2 * N; ++i) {
                     inverse[i][r] -= inverse[i][c] * temp;
                 }
             }
@@ -73,7 +73,7 @@ void convert_to_inverse(std::array<std::array<double, N>, N>& out,
     }
     for (std::size_t r = 0; r < N; ++r) {
         double temp = inverse[r][r];
-        for (std::size_t c = 0; c < N * 2; ++c) {
+        for (std::size_t c = 0; c < 2 * N; ++c) {
             inverse[c][r] = inverse[c][r] / temp;
         }
     }

@@ -53,6 +53,28 @@ constexpr uint8_t TRIGGER_THRESHOLD_MIN = 49;
 /// \brief Maximum value for trigger threshold
 constexpr uint8_t TRIGGER_THRESHOLD_MAX = 227;
 
+/** \brief Settings which a player might change when playing different games
+ *
+ * Essentially stores non-calibration settings, as sticks should always be
+ * calibrated the same for a given controller.
+ */
+struct configuration_profile {
+    /// \brief Button mappings
+    std::array<uint8_t, 13> mappings;
+
+    /// \brief Left trigger mode
+    trigger_mode l_trigger_mode;
+
+    /// \brief Left trigger threshold
+    uint8_t l_trigger_threshold_value;
+
+    /// \brief Right trigger mode
+    trigger_mode r_trigger_mode;
+
+    /// \brief Right trigger threshold
+    uint8_t r_trigger_threshold_value;
+};
+
 /// \brief Number of coefficients for stick linearization
 constexpr size_t NUM_COEFFICIENTS = 4;
 
@@ -80,21 +102,19 @@ struct stick_coefficients {
  *
  * \note Implemented as a singleton
  */
-struct controller_configuration {
-    /// \brief Button mappings
-    std::array<uint8_t, 13> mappings;
+class controller_configuration {
+   private:
+    controller_configuration();
 
-    /// \brief Left trigger mode
-    trigger_mode l_trigger_mode;
+    static uint32_t read_page();
+    static uint32_t write_page();
 
-    /// \brief Left trigger threshold
-    uint8_t l_trigger_threshold_value;
+   public:
+    /// \brief Profiles
+    std::array<configuration_profile, 2> profiles;
 
-    /// \brief Right trigger mode
-    trigger_mode r_trigger_mode;
-
-    /// \brief Right trigger threshold
-    uint8_t r_trigger_threshold_value;
+    /// \brief Current profile
+    size_t current_profile;
 
     /// \brief A-stick linearization coefficients
     stick_coefficients a_stick;
@@ -116,6 +136,27 @@ struct controller_configuration {
     /// \brief Persist the current configuration to flash
     void persist();
 
+    /// \brief Mappings for current profile
+    std::array<uint8_t, 13> mappings();
+
+    /// \brief Mapping by index for current profile
+    uint8_t mapping(size_t index);
+
+    /// \brief Left trigger mode for current profile
+    trigger_mode l_trigger_mode();
+
+    /// \brief Left trigger mode for current profile
+    uint8_t l_trigger_threshold_value();
+
+    /// \brief Right trigger mode for current profile
+    trigger_mode r_trigger_mode();
+
+    /// \brief Right trigger mode for current profile
+    uint8_t r_trigger_threshold_value();
+
+    /// \brief Set the current profile to the given one
+    void select_profile(size_t profile);
+
     /// \brief Enter remap mode
     void swap_mappings();
 
@@ -135,12 +176,6 @@ struct controller_configuration {
 
     /// \brief Erase all stored configurations
     static void factory_reset();
-
-   private:
-    controller_configuration();
-
-    static uint32_t read_page();
-    static uint32_t write_page();
 };
 
 /// \brief Flash address of first possible configuration

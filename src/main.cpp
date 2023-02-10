@@ -25,7 +25,6 @@
 #include "joybus.pio.h"
 #include "pico/multicore.h"
 #include "pico/stdlib.h"
-#include "q2x14.hpp"
 #include "read_pwm.pio.h"
 
 controller_state state;
@@ -82,6 +81,20 @@ int main() {
     // Load configuration
     controller_configuration &config = controller_configuration::get_instance();
 
+    // Wait for pull ups to stabilize
+    busy_wait_us(100);
+
+    // Now that we have a configuration, select a profile if combo is held
+    uint32_t startup_buttons = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
+    switch (startup_buttons) {
+        case (1 << START) | (1 << DPAD_LEFT):
+            config.select_profile(0);
+            break;
+        case (1 << START) | (1 << DPAD_RIGHT):
+            config.select_profile(1);
+            break;
+    }
+
     // Joybus PIO
     joybus_pio = pio0;
 
@@ -111,8 +124,8 @@ int main() {
 
     pio_sm_put_blocking(joybus_pio, tx_sm, FIFO_EMPTY);
 
-    state.left_trigger_jump = ((1 << config.mappings[6]) & JUMP_MASK) != 0;
-    state.right_trigger_jump = ((1 << config.mappings[5]) & JUMP_MASK) != 0;
+    state.left_trigger_jump = ((1 << config.mapping(6)) & JUMP_MASK) != 0;
+    state.right_trigger_jump = ((1 << config.mapping(5)) & JUMP_MASK) != 0;
 
     irq_set_enabled(PIO0_IRQ_0, true);
 
@@ -140,18 +153,18 @@ void read_digital(uint16_t physical_buttons) {
     uint16_t remapped_buttons = (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
 
     // Apply remaps
-    remap(physical_buttons, remapped_buttons, START, config.mappings[12]);
-    remap(physical_buttons, remapped_buttons, Y, config.mappings[11]);
-    remap(physical_buttons, remapped_buttons, X, config.mappings[10]);
-    remap(physical_buttons, remapped_buttons, B, config.mappings[9]);
-    remap(physical_buttons, remapped_buttons, A, config.mappings[8]);
-    remap(physical_buttons, remapped_buttons, LT_DIGITAL, config.mappings[6]);
-    remap(physical_buttons, remapped_buttons, RT_DIGITAL, config.mappings[5]);
-    remap(physical_buttons, remapped_buttons, Z, config.mappings[4]);
-    remap(physical_buttons, remapped_buttons, DPAD_UP, config.mappings[3]);
-    remap(physical_buttons, remapped_buttons, DPAD_DOWN, config.mappings[2]);
-    remap(physical_buttons, remapped_buttons, DPAD_RIGHT, config.mappings[1]);
-    remap(physical_buttons, remapped_buttons, DPAD_LEFT, config.mappings[0]);
+    remap(physical_buttons, remapped_buttons, START, config.mapping(12));
+    remap(physical_buttons, remapped_buttons, Y, config.mapping(11));
+    remap(physical_buttons, remapped_buttons, X, config.mapping(10));
+    remap(physical_buttons, remapped_buttons, B, config.mapping(9));
+    remap(physical_buttons, remapped_buttons, A, config.mapping(8));
+    remap(physical_buttons, remapped_buttons, LT_DIGITAL, config.mapping(6));
+    remap(physical_buttons, remapped_buttons, RT_DIGITAL, config.mapping(5));
+    remap(physical_buttons, remapped_buttons, Z, config.mapping(4));
+    remap(physical_buttons, remapped_buttons, DPAD_UP, config.mapping(3));
+    remap(physical_buttons, remapped_buttons, DPAD_DOWN, config.mapping(2));
+    remap(physical_buttons, remapped_buttons, DPAD_RIGHT, config.mapping(1));
+    remap(physical_buttons, remapped_buttons, DPAD_LEFT, config.mapping(0));
 
     // If triggers are pressed (post remapping)
     state.left_trigger_pressed = (remapped_buttons & (1 << LT_DIGITAL)) != 0;
@@ -159,9 +172,11 @@ void read_digital(uint16_t physical_buttons) {
 
     // Apply digital trigger modes
     apply_trigger_mode_digital(remapped_buttons, LT_DIGITAL,
-                               config.l_trigger_mode, config.r_trigger_mode);
+                               config.l_trigger_mode(),
+                               config.r_trigger_mode());
     apply_trigger_mode_digital(remapped_buttons, RT_DIGITAL,
-                               config.r_trigger_mode, config.l_trigger_mode);
+                               config.r_trigger_mode(),
+                               config.l_trigger_mode());
 
     // Update state
     state.buttons = remapped_buttons;
@@ -440,13 +455,13 @@ void read_triggers(uint8_t lt_raw, uint8_t rt_raw) {
     controller_configuration &config = controller_configuration::get_instance();
 
     apply_trigger_mode_analog(
-        state.l_trigger, lt_raw, config.l_trigger_threshold_value,
+        state.l_trigger, lt_raw, config.l_trigger_threshold_value(),
         state.left_trigger_pressed, !state.left_trigger_jump,
-        config.l_trigger_mode, config.r_trigger_mode);
+        config.l_trigger_mode(), config.r_trigger_mode());
     apply_trigger_mode_analog(
-        state.r_trigger, rt_raw, config.r_trigger_threshold_value,
+        state.r_trigger, rt_raw, config.r_trigger_threshold_value(),
         state.right_trigger_pressed, !state.right_trigger_jump,
-        config.r_trigger_mode, config.l_trigger_mode);
+        config.r_trigger_mode(), config.l_trigger_mode());
 }
 
 // Modify analog value based on the trigger mode
@@ -523,8 +538,4 @@ void read_sticks(const std::array<uint32_t, 2> &ax_raw,
         cy_high_total += cy_raw[0] + 3;
         cy_low_total += cy_raw[1];
     }
-    Q2x14 ax = Q2x14(ax_high_total / (float)(ax_low_total + ax_high_total));
-    Q2x14 ay = Q2x14(ay_high_total / (float)(ay_low_total + ay_high_total));
-    Q2x14 cx = Q2x14(cx_high_total / (float)(cx_low_total + cy_high_total));
-    Q2x14 cy = Q2x14(cy_high_total / (float)(cy_low_total + cy_high_total));
 }

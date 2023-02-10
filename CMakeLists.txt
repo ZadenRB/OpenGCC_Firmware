@@ -24,8 +24,6 @@ if (TARGET tinyusb_device)
         src/joybus.cpp
         src/main.hpp
         src/main.cpp
-        src/q2x14.hpp
-        src/q2x14.cpp
         src/state.hpp
         src/state.cpp
     )

@@ -140,10 +140,10 @@
  * |--------|----------------|----------------|----------------|----------------|----------------|----------------|----------------|----------------|
  * | 0      | 0              | 0              | Origin         | Start          | Y              | X              | B              | A              |
  * | 1      | 1              | LT             | RT             | Z              | D-Pad Up       | D-Pad Down     | D-Pad Right    | D-Pad Left     |
- * | 2      | Analog X Bit 7 | Analog X Bit 6 | Analog X Bit 5 | Analog X Bit 4 | Analog X Bit 3 | Analog X Bit 2 | Analog X Bit 1 | Analog X Bit 0 |
- * | 3      | Analog Y Bit 7 | Analog Y Bit 6 | Analog Y Bit 5 | Analog Y Bit 4 | Analog Y Bit 3 | Analog Y Bit 2 | Analog Y Bit 1 | Analog Y Bit 0 |
- * | 4      | CStick X Bit 7 | CStick X Bit 6 | CStick X Bit 5 | CStick X Bit 4 | CStick X Bit 3 | CStick X Bit 2 | CStick X Bit 1 | CStick X Bit 0 |
- * | 5      | CStick Y Bit 7 | CStick Y Bit 6 | CStick Y Bit 5 | CStick Y Bit 4 | CStick Y Bit 3 | CStick Y Bit 2 | CStick Y Bit 1 | CStick Y Bit 0 |
+ * | 2      | LStick X Bit 7 | LStick X Bit 6 | LStick X Bit 5 | LStick X Bit 4 | LStick X Bit 3 | LStick X Bit 2 | LStick X Bit 1 | LStick X Bit 0 |
+ * | 3      | LStick Y Bit 7 | LStick Y Bit 6 | LStick Y Bit 5 | LStick Y Bit 4 | LStick Y Bit 3 | LStick Y Bit 2 | LStick Y Bit 1 | LStick Y Bit 0 |
+ * | 4      | RStick X Bit 7 | RStick X Bit 6 | RStick X Bit 5 | RStick X Bit 4 | RStick X Bit 3 | RStick X Bit 2 | RStick X Bit 1 | RStick X Bit 0 |
+ * | 5      | RStick Y Bit 7 | RStick Y Bit 6 | RStick Y Bit 5 | RStick Y Bit 4 | RStick Y Bit 3 | RStick Y Bit 2 | RStick Y Bit 1 | RStick Y Bit 0 |
  * | 6      | L Analog Bit 7 | L Analog Bit 6 | L Analog Bit 5 | L Analog Bit 4 | R Analog Bit 7 | R Analog Bit 6 | R Analog Bit 5 | R Analog Bit 4 |
  * | 7      | A Analog Bit 7 | A Analog Bit 6 | A Analog Bit 5 | A Analog Bit 4 | B Analog Bit 7 | B Analog Bit 6 | B Analog Bit 5 | B Analog Bit 4 |
  *
@@ -152,9 +152,9 @@
  * |--------|----------------|----------------|----------------|----------------|----------------|----------------|----------------|----------------|
  * | 0      | 0              | 0              | Origin         | Start          | Y              | X              | B              | A              |
  * | 1      | 1              | LT             | RT             | Z              | D-Pad Up       | D-Pad Down     | D-Pad Right    | D-Pad Left     |
- * | 2      | Analog X Bit 7 | Analog X Bit 6 | Analog X Bit 5 | Analog X Bit 4 | Analog X Bit 3 | Analog X Bit 2 | Analog X Bit 1 | Analog X Bit 0 |
- * | 3      | Analog Y Bit 7 | Analog Y Bit 6 | Analog Y Bit 5 | Analog Y Bit 4 | Analog Y Bit 3 | Analog Y Bit 2 | Analog Y Bit 1 | Analog Y Bit 0 |
- * | 4      | CStick X Bit 7 | CStick X Bit 6 | CStick X Bit 5 | CStick X Bit 4 | CStick Y Bit 7 | CStick Y Bit 6 | CStick Y Bit 5 | CStick Y Bit 4 |
+ * | 2      | LStick X Bit 7 | LStick X Bit 6 | LStick X Bit 5 | LStick X Bit 4 | LStick X Bit 3 | LStick X Bit 2 | LStick X Bit 1 | LStick X Bit 0 |
+ * | 3      | LStick Y Bit 7 | LStick Y Bit 6 | LStick Y Bit 5 | LStick Y Bit 4 | LStick Y Bit 3 | LStick Y Bit 2 | LStick Y Bit 1 | LStick Y Bit 0 |
+ * | 4      | RStick X Bit 7 | RStick X Bit 6 | RStick X Bit 5 | RStick X Bit 4 | RStick Y Bit 7 | RStick Y Bit 6 | RStick Y Bit 5 | RStick Y Bit 4 |
  * | 5      | L Analog Bit 7 | L Analog Bit 6 | L Analog Bit 5 | L Analog Bit 4 | L Analog Bit 3 | L Analog Bit 2 | L Analog Bit 1 | L Analog Bit 0 |
  * | 6      | R Analog Bit 7 | R Analog Bit 6 | R Analog Bit 5 | R Analog Bit 4 | R Analog Bit 3 | R Analog Bit 2 | R Analog Bit 1 | R Analog Bit 0 |
  * | 7      | A Analog Bit 7 | A Analog Bit 6 | A Analog Bit 5 | A Analog Bit 4 | B Analog Bit 7 | B Analog Bit 6 | B Analog Bit 5 | B Analog Bit 4 |
@@ -164,9 +164,9 @@
  * |--------|----------------|----------------|----------------|----------------|----------------|----------------|----------------|----------------|
  * | 0      | 0              | 0              | Origin         | Start          | Y              | X              | B              | A              |
  * | 1      | 1              | LT             | RT             | Z              | D-Pad Up       | D-Pad Down     | D-Pad Right    | D-Pad Left     |
- * | 2      | Analog X Bit 7 | Analog X Bit 6 | Analog X Bit 5 | Analog X Bit 4 | Analog X Bit 3 | Analog X Bit 2 | Analog X Bit 1 | Analog X Bit 0 |
- * | 3      | Analog Y Bit 7 | Analog Y Bit 6 | Analog Y Bit 5 | Analog Y Bit 4 | Analog Y Bit 3 | Analog Y Bit 2 | Analog Y Bit 1 | Analog Y Bit 0 |
- * | 4      | CStick X Bit 7 | CStick X Bit 6 | CStick X Bit 5 | CStick X Bit 4 | CStick Y Bit 7 | CStick Y Bit 6 | CStick Y Bit 5 | CStick Y Bit 4 |
+ * | 2      | LStick X Bit 7 | LStick X Bit 6 | LStick X Bit 5 | LStick X Bit 4 | LStick X Bit 3 | LStick X Bit 2 | LStick X Bit 1 | LStick X Bit 0 |
+ * | 3      | LStick Y Bit 7 | LStick Y Bit 6 | LStick Y Bit 5 | LStick Y Bit 4 | LStick Y Bit 3 | LStick Y Bit 2 | LStick Y Bit 1 | LStick Y Bit 0 |
+ * | 4      | RStick X Bit 7 | RStick X Bit 6 | RStick X Bit 5 | RStick X Bit 4 | RStick Y Bit 7 | RStick Y Bit 6 | RStick Y Bit 5 | RStick Y Bit 4 |
  * | 5      | L Analog Bit 7 | L Analog Bit 6 | L Analog Bit 5 | L Analog Bit 4 | R Analog Bit 7 | R Analog Bit 6 | R Analog Bit 5 | R Analog Bit 4 |
  * | 6      | A Analog Bit 7 | A Analog Bit 6 | A Analog Bit 5 | A Analog Bit 4 | A Analog Bit 3 | A Analog Bit 2 | A Analog Bit 1 | A Analog Bit 0 |
  * | 7      | B Analog Bit 7 | B Analog Bit 6 | B Analog Bit 5 | B Analog Bit 4 | B Analog Bit 3 | B Analog Bit 2 | B Analog Bit 1 | B Analog Bit 0 |
@@ -176,10 +176,10 @@
  * |--------|----------------|----------------|----------------|----------------|----------------|----------------|----------------|----------------|
  * | 0      | 0              | 0              | Origin         | Start          | Y              | X              | B              | A              |
  * | 1      | 1              | LT             | RT             | Z              | D-Pad Up       | D-Pad Down     | D-Pad Right    | D-Pad Left     |
- * | 2      | Analog X Bit 7 | Analog X Bit 6 | Analog X Bit 5 | Analog X Bit 4 | Analog X Bit 3 | Analog X Bit 2 | Analog X Bit 1 | Analog X Bit 0 |
- * | 3      | Analog Y Bit 7 | Analog Y Bit 6 | Analog Y Bit 5 | Analog Y Bit 4 | Analog Y Bit 3 | Analog Y Bit 2 | Analog Y Bit 1 | Analog Y Bit 0 |
- * | 4      | CStick X Bit 7 | CStick X Bit 6 | CStick X Bit 5 | CStick X Bit 4 | CStick X Bit 3 | CStick X Bit 2 | CStick X Bit 1 | CStick X Bit 0 |
- * | 5      | CStick Y Bit 7 | CStick Y Bit 6 | CStick Y Bit 5 | CStick Y Bit 4 | CStick Y Bit 3 | CStick Y Bit 2 | CStick Y Bit 1 | CStick Y Bit 0 |
+ * | 2      | LStick X Bit 7 | LStick X Bit 6 | LStick X Bit 5 | LStick X Bit 4 | LStick X Bit 3 | LStick X Bit 2 | LStick X Bit 1 | LStick X Bit 0 |
+ * | 3      | LStick Y Bit 7 | LStick Y Bit 6 | LStick Y Bit 5 | LStick Y Bit 4 | LStick Y Bit 3 | LStick Y Bit 2 | LStick Y Bit 1 | LStick Y Bit 0 |
+ * | 4      | RStick X Bit 7 | RStick X Bit 6 | RStick X Bit 5 | RStick X Bit 4 | RStick X Bit 3 | RStick X Bit 2 | RStick X Bit 1 | RStick X Bit 0 |
+ * | 5      | RStick Y Bit 7 | RStick Y Bit 6 | RStick Y Bit 5 | RStick Y Bit 4 | RStick Y Bit 3 | RStick Y Bit 2 | RStick Y Bit 1 | RStick Y Bit 0 |
  * | 6      | L Analog Bit 7 | L Analog Bit 6 | L Analog Bit 5 | L Analog Bit 4 | L Analog Bit 3 | L Analog Bit 2 | L Analog Bit 1 | L Analog Bit 0 |
  * | 7      | R Analog Bit 7 | R Analog Bit 6 | R Analog Bit 5 | R Analog Bit 4 | R Analog Bit 3 | R Analog Bit 2 | R Analog Bit 1 | R Analog Bit 0 |
  *
@@ -188,10 +188,10 @@
  * |--------|----------------|----------------|----------------|----------------|----------------|----------------|----------------|----------------|
  * | 0      | 0              | 0              | Origin         | Start          | Y              | X              | B              | A              |
  * | 1      | 1              | LT             | RT             | Z              | D-Pad Up       | D-Pad Down     | D-Pad Right    | D-Pad Left     |
- * | 2      | Analog X Bit 7 | Analog X Bit 6 | Analog X Bit 5 | Analog X Bit 4 | Analog X Bit 3 | Analog X Bit 2 | Analog X Bit 1 | Analog X Bit 0 |
- * | 3      | Analog Y Bit 7 | Analog Y Bit 6 | Analog Y Bit 5 | Analog Y Bit 4 | Analog Y Bit 3 | Analog Y Bit 2 | Analog Y Bit 1 | Analog Y Bit 0 |
- * | 4      | CStick X Bit 7 | CStick X Bit 6 | CStick X Bit 5 | CStick X Bit 4 | CStick X Bit 3 | CStick X Bit 2 | CStick X Bit 1 | CStick X Bit 0 |
- * | 5      | CStick Y Bit 7 | CStick Y Bit 6 | CStick Y Bit 5 | CStick Y Bit 4 | CStick Y Bit 3 | CStick Y Bit 2 | CStick Y Bit 1 | CStick Y Bit 0 |
+ * | 2      | LStick X Bit 7 | LStick X Bit 6 | LStick X Bit 5 | LStick X Bit 4 | LStick X Bit 3 | LStick X Bit 2 | LStick X Bit 1 | LStick X Bit 0 |
+ * | 3      | LStick Y Bit 7 | LStick Y Bit 6 | LStick Y Bit 5 | LStick Y Bit 4 | LStick Y Bit 3 | LStick Y Bit 2 | LStick Y Bit 1 | LStick Y Bit 0 |
+ * | 4      | RStick X Bit 7 | RStick X Bit 6 | RStick X Bit 5 | RStick X Bit 4 | RStick X Bit 3 | RStick X Bit 2 | RStick X Bit 1 | RStick X Bit 0 |
+ * | 5      | RStick Y Bit 7 | RStick Y Bit 6 | RStick Y Bit 5 | RStick Y Bit 4 | RStick Y Bit 3 | RStick Y Bit 2 | RStick Y Bit 1 | RStick Y Bit 0 |
  * | 6      | A Analog Bit 7 | A Analog Bit 6 | A Analog Bit 5 | A Analog Bit 4 | A Analog Bit 3 | A Analog Bit 2 | A Analog Bit 1 | A Analog Bit 0 |
  * | 7      | B Analog Bit 7 | B Analog Bit 6 | B Analog Bit 5 | B Analog Bit 4 | B Analog Bit 3 | B Analog Bit 2 | B Analog Bit 1 | B Analog Bit 0 |
  *
@@ -200,10 +200,10 @@
  * |--------|----------------|----------------|----------------|----------------|----------------|----------------|----------------|----------------|
  * | 0      | 0              | 0              | Origin         | Start          | Y              | X              | B              | A              |
  * | 1      | 1              | LT             | RT             | Z              | D-Pad Up       | D-Pad Down     | D-Pad Right    | D-Pad Left     |
- * | 2      | Analog X Bit 7 | Analog X Bit 6 | Analog X Bit 5 | Analog X Bit 4 | Analog X Bit 3 | Analog X Bit 2 | Analog X Bit 1 | Analog X Bit 0 |
- * | 3      | Analog Y Bit 7 | Analog Y Bit 6 | Analog Y Bit 5 | Analog Y Bit 4 | Analog Y Bit 3 | Analog Y Bit 2 | Analog Y Bit 1 | Analog Y Bit 0 |
- * | 4      | CStick X Bit 7 | CStick X Bit 6 | CStick X Bit 5 | CStick X Bit 4 | CStick X Bit 3 | CStick X Bit 2 | CStick X Bit 1 | CStick X Bit 0 |
- * | 5      | CStick Y Bit 7 | CStick Y Bit 6 | CStick Y Bit 5 | CStick Y Bit 4 | CStick Y Bit 3 | CStick Y Bit 2 | CStick Y Bit 1 | CStick Y Bit 0 |
+ * | 2      | LStick X Bit 7 | LStick X Bit 6 | LStick X Bit 5 | LStick X Bit 4 | LStick X Bit 3 | LStick X Bit 2 | LStick X Bit 1 | LStick X Bit 0 |
+ * | 3      | LStick Y Bit 7 | LStick Y Bit 6 | LStick Y Bit 5 | LStick Y Bit 4 | LStick Y Bit 3 | LStick Y Bit 2 | LStick Y Bit 1 | LStick Y Bit 0 |
+ * | 4      | RStick X Bit 7 | RStick X Bit 6 | RStick X Bit 5 | RStick X Bit 4 | RStick X Bit 3 | RStick X Bit 2 | RStick X Bit 1 | RStick X Bit 0 |
+ * | 5      | RStick Y Bit 7 | RStick Y Bit 6 | RStick Y Bit 5 | RStick Y Bit 4 | RStick Y Bit 3 | RStick Y Bit 2 | RStick Y Bit 1 | RStick Y Bit 0 |
  * | 6      | L Analog Bit 7 | L Analog Bit 6 | L Analog Bit 5 | L Analog Bit 4 | L Analog Bit 3 | L Analog Bit 2 | L Analog Bit 1 | L Analog Bit 0 |
  * | 7      | R Analog Bit 7 | R Analog Bit 6 | R Analog Bit 5 | R Analog Bit 4 | R Analog Bit 3 | R Analog Bit 2 | R Analog Bit 1 | R Analog Bit 0 |
  * | 8      | A Analog Bit 7 | A Analog Bit 6 | A Analog Bit 5 | A Analog Bit 4 | A Analog Bit 3 | A Analog Bit 2 | A Analog Bit 1 | A Analog Bit 0 |

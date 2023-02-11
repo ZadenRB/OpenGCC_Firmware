@@ -51,22 +51,10 @@ struct stick {
 struct controller_state {
     /// \brief State of digital inputs
     uint16_t buttons = 0;
-    /// \brief Whether the physical left trigger button is pressed
-    bool left_trigger_pressed = false;
-    /** \brief Whether the left trigger button has been remapped to a jump
-     * button (X or Y)
-     */
-    bool left_trigger_jump;
-    /// \brief Whether the physical right trigger button is pressed
-    bool right_trigger_pressed = false;
-    /** \brief Whether the right trigger button has been remapped to a jump
-     * button (X or Y)
-     */
-    bool right_trigger_jump;
-    /// \brief State of A-stick
-    stick a_stick;
-    /// \brief State of C-stick
-    stick c_stick;
+    /// \brief State of left stick
+    stick l_stick;
+    /// \brief State of right stick
+    stick r_stick;
     /// \brief Left trigger analog value
     uint8_t l_trigger;
     /// \brief Right trigger analog value
@@ -97,15 +85,15 @@ extern controller_state state;
 extern PIO joybus_pio;
 
 /// \brief State machine being used for Joybus TX
-extern uint tx_sm;
+extern uint joybus_tx_sm;
 
 /// \brief State machine being used for Joybus RX
-extern uint rx_sm;
+extern uint joybus_rx_sm;
 
 /// \brief Offset into PIO instruction memory of the RX program
-extern uint rx_offset;
+extern uint joybus_rx_offset;
 
 /// \brief DMA channel being used for Joybus TX
-extern uint tx_dma;
+extern uint joybus_tx_dma;
 
 #endif  // STATE_H_

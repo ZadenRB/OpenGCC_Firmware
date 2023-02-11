@@ -61,20 +61,20 @@ constexpr uint Y = 11;
 /// \brief Start button pin
 constexpr uint START = 12;
 
-/// \brief C-Stick y-axis pin
-constexpr uint CY = 13;
+/// \brief Right stick y-axis pin
+constexpr uint RY = 13;
 
-/// \brief C-Stick x-axis pin
-constexpr uint CX = 14;
+/// \brief Right stick x-axis pin
+constexpr uint RX = 14;
 
 /// \brief Data line pin
 constexpr uint DATA = 18;
 
-/// \brief A-Stick y-axis pin
-constexpr uint AY = 24;
+/// \brief Left stick y-axis pin
+constexpr uint LY = 24;
 
-/// \brief A-Stick x-axis pin
-constexpr uint AX = 25;
+/// \brief Left stick x-axis pin
+constexpr uint LX = 25;
 
 /// \brief Left trigger slider pin
 constexpr uint LT_ANALOG = 26;

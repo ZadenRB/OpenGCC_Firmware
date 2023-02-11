@@ -28,7 +28,7 @@ std::array<uint8_t, 10> tx_buf;
 
 // Process a request from the console
 void handle_console_request() {
-    uint32_t cmd = pio_sm_get(joybus_pio, rx_sm);
+    uint32_t cmd = pio_sm_get(joybus_pio, joybus_rx_sm);
 
     int request_len;
 
@@ -51,20 +51,20 @@ void handle_console_request() {
         // Wait a max of 48us for a new item to be pushed into the RX FIFO,
         // otherwise assume we caught the middle of a command & return
         absolute_time_t timeout_at = make_timeout_time_us(48);
-        while (pio_sm_is_rx_fifo_empty(joybus_pio, rx_sm)) {
+        while (pio_sm_is_rx_fifo_empty(joybus_pio, joybus_rx_sm)) {
             if (absolute_time_diff_us(timeout_at, get_absolute_time()) > 0) {
                 // Clear ISR (mov isr, null)
-                pio_sm_exec(joybus_pio, rx_sm,
+                pio_sm_exec(joybus_pio, joybus_rx_sm,
                             pio_encode_mov(pio_isr, pio_null));
                 return;
             }
         }
-        request[i] = pio_sm_get(joybus_pio, rx_sm);
+        request[i] = pio_sm_get(joybus_pio, joybus_rx_sm);
     }
 
     // Move to code to process stop bit
-    pio_sm_exec(joybus_pio, rx_sm,
-                pio_encode_jmp(rx_offset + joybus_rx_offset_read_stop_bit));
+    pio_sm_exec(joybus_pio, joybus_rx_sm,
+                pio_encode_jmp(joybus_rx_offset + joybus_rx_offset_read_stop_bit));
 
     switch (cmd) {
         case 0xFF:
@@ -123,8 +123,8 @@ void handle_console_request() {
 
 // Send buffer of data
 void send_data(uint32_t length) {
-    dma_channel_config tx_config = dma_get_channel_config(tx_dma);
-    dma_channel_configure(tx_dma, &tx_config, &joybus_pio->txf[tx_sm],
+    dma_channel_config tx_config = dma_get_channel_config(joybus_tx_dma);
+    dma_channel_configure(joybus_tx_dma, &tx_config, &joybus_pio->txf[joybus_tx_sm],
                           tx_buf.data(), length, true);
     pio_interrupt_clear(joybus_pio, TX_SYS_IRQ);
 }
@@ -137,10 +137,10 @@ void send_mode(uint8_t mode) {
             length = 8;
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
-            tx_buf[2] = state.a_stick.x;
-            tx_buf[3] = state.a_stick.y;
-            tx_buf[4] = state.c_stick.x;
-            tx_buf[5] = state.c_stick.y;
+            tx_buf[2] = state.l_stick.x;
+            tx_buf[3] = state.l_stick.y;
+            tx_buf[4] = state.r_stick.x;
+            tx_buf[5] = state.r_stick.y;
             tx_buf[6] = (state.l_trigger & 0xF0) | (state.r_trigger >> 4);
             tx_buf[7] = 0x00;
             break;
@@ -148,9 +148,9 @@ void send_mode(uint8_t mode) {
             length = 8;
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
-            tx_buf[2] = state.a_stick.x;
-            tx_buf[3] = state.a_stick.y;
-            tx_buf[4] = (state.c_stick.x & 0xF0) | (state.c_stick.y >> 4);
+            tx_buf[2] = state.l_stick.x;
+            tx_buf[3] = state.l_stick.y;
+            tx_buf[4] = (state.r_stick.x & 0xF0) | (state.r_stick.y >> 4);
             tx_buf[5] = state.l_trigger;
             tx_buf[6] = state.r_trigger;
             tx_buf[7] = 0x00;
@@ -159,9 +159,9 @@ void send_mode(uint8_t mode) {
             length = 8;
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
-            tx_buf[2] = state.a_stick.x;
-            tx_buf[3] = state.a_stick.y;
-            tx_buf[4] = (state.c_stick.x & 0xF0) | (state.c_stick.y >> 4);
+            tx_buf[2] = state.l_stick.x;
+            tx_buf[3] = state.l_stick.y;
+            tx_buf[4] = (state.r_stick.x & 0xF0) | (state.r_stick.y >> 4);
             tx_buf[5] = (state.l_trigger & 0xF0) | (state.r_trigger >> 4);
             tx_buf[6] = 0x00;
             tx_buf[7] = 0x00;
@@ -170,10 +170,10 @@ void send_mode(uint8_t mode) {
             length = 8;
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
-            tx_buf[2] = state.a_stick.x;
-            tx_buf[3] = state.a_stick.y;
-            tx_buf[4] = state.c_stick.x;
-            tx_buf[5] = state.c_stick.y;
+            tx_buf[2] = state.l_stick.x;
+            tx_buf[3] = state.l_stick.y;
+            tx_buf[4] = state.r_stick.x;
+            tx_buf[5] = state.r_stick.y;
             tx_buf[6] = state.l_trigger;
             tx_buf[7] = state.r_trigger;
             break;
@@ -181,20 +181,20 @@ void send_mode(uint8_t mode) {
             length = 8;
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
-            tx_buf[2] = state.a_stick.x;
-            tx_buf[3] = state.a_stick.y;
-            tx_buf[4] = state.c_stick.x;
-            tx_buf[5] = state.c_stick.y;
+            tx_buf[2] = state.l_stick.x;
+            tx_buf[3] = state.l_stick.y;
+            tx_buf[4] = state.r_stick.x;
+            tx_buf[5] = state.r_stick.y;
             tx_buf[6] = 0x00;
             tx_buf[7] = 0x00;
         case 0x05:
             length = 10;
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
-            tx_buf[2] = state.a_stick.x;
-            tx_buf[3] = state.a_stick.y;
-            tx_buf[4] = state.c_stick.x;
-            tx_buf[5] = state.c_stick.y;
+            tx_buf[2] = state.l_stick.x;
+            tx_buf[3] = state.l_stick.y;
+            tx_buf[4] = state.r_stick.x;
+            tx_buf[5] = state.r_stick.y;
             tx_buf[6] = state.l_trigger;
             tx_buf[7] = state.r_trigger;
             tx_buf[8] = 0x00;

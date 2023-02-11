@@ -100,14 +100,14 @@ void apply_trigger_mode_analog(uint8_t& out, uint8_t analog_value,
 /**
  * \brief Read and process analog sticks
  *
- * \param ax_raw Location of PWM high / low data for A-stick X
- * \param ay_raw Location of PWM high / low data for A-stick Y
- * \param cx_raw Location of PWM high / low data for C-stick X
- * \param cy_raw Location of PWM high / low data for C-stick Y
+ * \param lx_raw Location of PWM high / low data for left stick X
+ * \param ly_raw Location of PWM high / low data for left stick Y
+ * \param rx_raw Location of PWM high / low data for right stick X
+ * \param ry_raw Location of PWM high / low data for right stick Y
  */
-void read_sticks(const std::array<uint32_t, 2>& ax_raw,
-                 const std::array<uint32_t, 2>& ay_raw,
-                 const std::array<uint32_t, 2>& cx_raw,
-                 const std::array<uint32_t, 2>& cy_raw);
+void read_sticks(const std::array<uint32_t, 2>& lx_raw,
+                 const std::array<uint32_t, 2>& ly_raw,
+                 const std::array<uint32_t, 2>& rx_raw,
+                 const std::array<uint32_t, 2>& ry_raw);
 
 #endif  // MAIN_H_

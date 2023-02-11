@@ -53,7 +53,10 @@ controller_configuration::controller_configuration() {
         }
         current_profile = 0;
 
-        // TODO: add default coefficient values
+        l_stick_coefficients.x_coefficients = {0, 0, 0, 0};
+        l_stick_coefficients.y_coefficients = {0, 0, 0, 0};
+        r_stick_coefficients.x_coefficients = {0, 0, 0, 0};
+        r_stick_coefficients.y_coefficients = {0, 0, 0, 0};
 
         // Persist
         persist();

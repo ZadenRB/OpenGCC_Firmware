@@ -51,12 +51,12 @@ void joybus_uf2_init(PIO joybus_pio, uint rx_sm, uint sm, uint dma) {
     channel_config_set_transfer_data_size(&dma_config, DMA_SIZE_8);
     channel_config_set_ring(&dma_config, true, 9);  // Wrap after 512 bytes
     channel_config_set_dreq(&dma_config,
-                            pio_get_dreq(joybus_pio, rx_sm, false));
+                            pio_get_dreq(joybus_pio, joybus_rx_sm, false));
     channel_config_set_chain_to(&dma_config, dma_channel);
 
     // Start DMA
     dma_channel_configure(dma_channel, &dma_config, &block,
-                          &joybus_pio->rxf[rx_sm], 0xFFFFFFFF, true);
+                          &joybus_pio->rxf[joybus_rx_sm], 0xFFFFFFFF, true);
 
     // Reset variables
     num_blocks = 0;

@@ -89,7 +89,7 @@ constexpr std::array<double, NUM_CALIBRATION_POINTS> EXPECTED_X = {
 constexpr std::array<double, NUM_CALIBRATION_POINTS> EXPECTED_Y = {
     0.00, 0, 0.71, 1.00, 0.71, 0, -0.71, -1.00, -0.71};
 
-/// \brief Calibration points for x & y axis of a stick.
+/// \brief Calibration points for x & y axis of an analog stick.
 struct stick_coefficients {
     /// \brief Coefficients for x axis linearization
     std::array<double, NUM_COEFFICIENTS> x_coefficients;
@@ -116,11 +116,11 @@ class controller_configuration {
     /// \brief Current profile
     size_t current_profile;
 
-    /// \brief A-stick linearization coefficients
-    stick_coefficients a_stick;
+    /// \brief Left stick linearization coefficients
+    stick_coefficients l_stick_coefficients;
 
-    /// \brief C-stick linearization coefficients
-    stick_coefficients c_stick;
+    /// \brief Right stick linearization coefficients
+    stick_coefficients r_stick_coefficients;
 
     /** \brief Get the configuration instance
      * \return controller_configuration&

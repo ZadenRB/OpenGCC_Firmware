@@ -30,16 +30,16 @@
 controller_state state;
 
 PIO joybus_pio;
-uint rx_sm;
-uint rx_offset;
-pio_sm_config rx_config;
-uint tx_sm;
-uint tx_dma;
+uint joybus_rx_sm;
+uint joybus_rx_offset;
+pio_sm_config joybus_rx_config;
+uint joybus_tx_sm;
+uint joybus_tx_dma;
 
-std::array<uint32_t, 2> ax_raw;
-std::array<uint32_t, 2> ay_raw;
-std::array<uint32_t, 2> cx_raw;
-std::array<uint32_t, 2> cy_raw;
+std::array<uint32_t, 2> lx_raw;
+std::array<uint32_t, 2> ly_raw;
+std::array<uint32_t, 2> rx_raw;
+std::array<uint32_t, 2> ry_raw;
 
 int main() {
     // Initialize clocks
@@ -99,40 +99,51 @@ int main() {
     joybus_pio = pio0;
 
     // Joybus RX
-    rx_offset = pio_add_program(joybus_pio, &joybus_rx_program);
-    rx_sm = pio_claim_unused_sm(joybus_pio, true);
+    joybus_rx_offset = pio_add_program(joybus_pio, &joybus_rx_program);
+    joybus_rx_sm = pio_claim_unused_sm(joybus_pio, true);
 
     // Joybus RX IRQ
     irq_set_exclusive_handler(PIO0_IRQ_0, handle_console_request);
     pio_set_irq0_source_enabled(
         joybus_pio,
-        static_cast<pio_interrupt_source>(pis_sm0_rx_fifo_not_empty + rx_sm),
+        static_cast<pio_interrupt_source>(pis_sm0_rx_fifo_not_empty + joybus_rx_sm),
         true);
 
     // Joybus TX
     uint tx_offset = pio_add_program(joybus_pio, &joybus_tx_program);
-    tx_sm = pio_claim_unused_sm(joybus_pio, true);
-    joybus_tx_program_init(joybus_pio, tx_sm, tx_offset, DATA);
+    joybus_tx_sm = pio_claim_unused_sm(joybus_pio, true);
+    joybus_tx_program_init(joybus_pio, joybus_tx_sm, tx_offset, DATA);
 
     // Joybus TX DMA
-    tx_dma = dma_claim_unused_channel(true);
-    dma_channel_config tx_config = dma_channel_get_default_config(tx_dma);
+    joybus_tx_dma = dma_claim_unused_channel(true);
+    dma_channel_config tx_config = dma_channel_get_default_config(joybus_tx_dma);
     channel_config_set_read_increment(&tx_config, true);
     channel_config_set_transfer_data_size(&tx_config, DMA_SIZE_8);
-    channel_config_set_dreq(&tx_config, pio_get_dreq(joybus_pio, tx_sm, true));
-    dma_channel_set_config(tx_dma, &tx_config, false);
+    channel_config_set_dreq(&tx_config, pio_get_dreq(joybus_pio, joybus_tx_sm, true));
+    dma_channel_set_config(joybus_tx_dma, &tx_config, false);
 
-    pio_sm_put_blocking(joybus_pio, tx_sm, FIFO_EMPTY);
-
-    state.left_trigger_jump = ((1 << config.mapping(6)) & JUMP_MASK) != 0;
-    state.right_trigger_jump = ((1 << config.mapping(5)) & JUMP_MASK) != 0;
+    pio_sm_put_blocking(joybus_pio, joybus_tx_sm, FIFO_EMPTY);
 
     irq_set_enabled(PIO0_IRQ_0, true);
 
-    joybus_rx_program_init(joybus_pio, rx_sm, rx_offset, DATA);
+    joybus_rx_program_init(joybus_pio, joybus_rx_sm, joybus_rx_offset, DATA);
 
-    pio_restart_sm_mask(joybus_pio, (1 << rx_sm) | (1 << tx_sm));
+    pio_restart_sm_mask(joybus_pio, (1 << joybus_rx_sm) | (1 << joybus_tx_sm));
 
+    if (config.l_stick_coefficients.x_coefficients ==
+            std::array<double, 4>{0, 0, 0, 0} ||
+        config.l_stick_coefficients.y_coefficients ==
+            std::array<double, 4>{0, 0, 0, 0}) {
+        config.calibrate_stick(config.l_stick_coefficients, state.r_stick,
+                               lx_raw, ly_raw);
+    }
+    if (config.r_stick_coefficients.x_coefficients ==
+            std::array<double, 4>{0, 0, 0, 0} ||
+        config.r_stick_coefficients.y_coefficients ==
+            std::array<double, 4>{0, 0, 0, 0}) {
+        config.calibrate_stick(config.r_stick_coefficients, state.l_stick,
+                               rx_raw, ly_raw);
+    }
     uint32_t raw_input;
     uint16_t physical_buttons;
     while (true) {
@@ -167,9 +178,6 @@ void read_digital(uint16_t physical_buttons) {
     remap(physical_buttons, remapped_buttons, DPAD_LEFT, config.mapping(0));
 
     // If triggers are pressed (post remapping)
-    state.left_trigger_pressed = (remapped_buttons & (1 << LT_DIGITAL)) != 0;
-    state.right_trigger_pressed = (remapped_buttons & (1 << RT_DIGITAL)) != 0;
-
     // Apply digital trigger modes
     apply_trigger_mode_digital(remapped_buttons, LT_DIGITAL,
                                config.l_trigger_mode(),
@@ -263,12 +271,12 @@ void execute_combo() {
             config.configure_triggers();
             break;
         case (1 << START) | (1 << X) | (1 << LT_DIGITAL):
-            config.calibrate_stick(config.a_stick, state.c_stick, ax_raw,
-                                   ay_raw);
+            config.calibrate_stick(config.l_stick_coefficients, state.r_stick,
+                                   lx_raw, ly_raw);
             break;
         case (1 << START) | (1 << X) | (1 << RT_DIGITAL):
-            config.calibrate_stick(config.c_stick, state.a_stick, cx_raw,
-                                   cy_raw);
+            config.calibrate_stick(config.r_stick_coefficients, state.l_stick,
+                                   rx_raw, ry_raw);
             break;
         case (1 << START) | (1 << Y) | (1 << Z):
             controller_configuration::factory_reset();
@@ -281,41 +289,41 @@ void execute_combo() {
 
 void analog_main() {
     // Set PWM inputs as pull up
-    gpio_pull_up(AX);
-    gpio_pull_up(AY);
-    gpio_pull_up(CX);
-    gpio_pull_up(CY);
+    gpio_pull_up(LX);
+    gpio_pull_up(LY);
+    gpio_pull_up(RX);
+    gpio_pull_up(RY);
 
     // Configure PWM PIO
     PIO pwm_pio = pio1;
     uint read_pwm_offset = pio_add_program(pwm_pio, &read_pwm_program);
 
     // Configure SMs
-    uint ax_sm = pio_claim_unused_sm(pwm_pio, true);
-    read_pwm_program_init(pwm_pio, ax_sm, read_pwm_offset, AX);
+    uint lx_sm = pio_claim_unused_sm(pwm_pio, true);
+    read_pwm_program_init(pwm_pio, lx_sm, read_pwm_offset, LX);
 
-    uint ay_sm = pio_claim_unused_sm(pwm_pio, true);
-    read_pwm_program_init(pwm_pio, ay_sm, read_pwm_offset, AY);
+    uint ly_sm = pio_claim_unused_sm(pwm_pio, true);
+    read_pwm_program_init(pwm_pio, ly_sm, read_pwm_offset, LY);
 
-    uint cx_sm = pio_claim_unused_sm(pwm_pio, true);
-    read_pwm_program_init(pwm_pio, cx_sm, read_pwm_offset, CX);
+    uint rx_sm = pio_claim_unused_sm(pwm_pio, true);
+    read_pwm_program_init(pwm_pio, rx_sm, read_pwm_offset, RX);
 
-    uint cy_sm = pio_claim_unused_sm(pwm_pio, true);
-    read_pwm_program_init(pwm_pio, cy_sm, read_pwm_offset, CY);
+    uint ry_sm = pio_claim_unused_sm(pwm_pio, true);
+    read_pwm_program_init(pwm_pio, ry_sm, read_pwm_offset, RY);
 
     // Claim PWM DMA channels
-    int ax_dma_1 = dma_claim_unused_channel(true);
-    int ax_dma_2 = dma_claim_unused_channel(true);
-    int ay_dma_1 = dma_claim_unused_channel(true);
-    int ay_dma_2 = dma_claim_unused_channel(true);
-    int cx_dma_1 = dma_claim_unused_channel(true);
-    int cx_dma_2 = dma_claim_unused_channel(true);
-    int cy_dma_1 = dma_claim_unused_channel(true);
-    int cy_dma_2 = dma_claim_unused_channel(true);
+    int lx_dma_1 = dma_claim_unused_channel(true);
+    int lx_dma_2 = dma_claim_unused_channel(true);
+    int ly_dma_1 = dma_claim_unused_channel(true);
+    int ly_dma_2 = dma_claim_unused_channel(true);
+    int rx_dma_1 = dma_claim_unused_channel(true);
+    int rx_dma_2 = dma_claim_unused_channel(true);
+    int ry_dma_1 = dma_claim_unused_channel(true);
+    int ry_dma_2 = dma_claim_unused_channel(true);
 
     // Setup shared configurations
     dma_channel_config dma_base_config =
-        dma_channel_get_default_config(ax_dma_1);
+        dma_channel_get_default_config(lx_dma_1);
     channel_config_set_read_increment(&dma_base_config,
                                       false);  // Always read from same address
     channel_config_set_write_increment(&dma_base_config,
@@ -323,70 +331,70 @@ void analog_main() {
     channel_config_set_ring(&dma_base_config, true, 3);  // Wrap after 8 bytes
 
     // Configure SM specific configurations
-    dma_channel_config ax_dma_base_config = dma_base_config;
-    channel_config_set_dreq(&ax_dma_base_config,
-                            pio_get_dreq(pwm_pio, ax_sm, false));
+    dma_channel_config lx_dma_base_config = dma_base_config;
+    channel_config_set_dreq(&lx_dma_base_config,
+                            pio_get_dreq(pwm_pio, lx_sm, false));
 
-    dma_channel_config ay_dma_base_config = dma_base_config;
-    channel_config_set_dreq(&ay_dma_base_config,
-                            pio_get_dreq(pwm_pio, ay_sm, false));
+    dma_channel_config ly_dma_base_config = dma_base_config;
+    channel_config_set_dreq(&ly_dma_base_config,
+                            pio_get_dreq(pwm_pio, ly_sm, false));
 
-    dma_channel_config cx_dma_base_config = dma_base_config;
-    channel_config_set_dreq(&cx_dma_base_config,
-                            pio_get_dreq(pwm_pio, cx_sm, false));
+    dma_channel_config rx_dma_base_config = dma_base_config;
+    channel_config_set_dreq(&rx_dma_base_config,
+                            pio_get_dreq(pwm_pio, rx_sm, false));
 
-    dma_channel_config cy_dma_base_config = dma_base_config;
-    channel_config_set_dreq(&cy_dma_base_config,
-                            pio_get_dreq(pwm_pio, cy_sm, false));
+    dma_channel_config ry_dma_base_config = dma_base_config;
+    channel_config_set_dreq(&ry_dma_base_config,
+                            pio_get_dreq(pwm_pio, ry_sm, false));
 
     // Setup channel specific configurations
-    dma_channel_config ax_dma_1_config = ax_dma_base_config;
-    channel_config_set_chain_to(&ax_dma_1_config, ax_dma_2);
-    dma_channel_config ax_dma_2_config = ax_dma_base_config;
-    channel_config_set_chain_to(&ax_dma_2_config, ax_dma_1);
+    dma_channel_config lx_dma_1_config = lx_dma_base_config;
+    channel_config_set_chain_to(&lx_dma_1_config, lx_dma_2);
+    dma_channel_config lx_dma_2_config = lx_dma_base_config;
+    channel_config_set_chain_to(&lx_dma_2_config, lx_dma_1);
 
-    dma_channel_config ay_dma_1_config = ay_dma_base_config;
-    channel_config_set_chain_to(&ay_dma_1_config, ay_dma_2);
-    dma_channel_config ay_dma_2_config = ay_dma_base_config;
-    channel_config_set_chain_to(&ay_dma_2_config, ay_dma_1);
+    dma_channel_config ly_dma_1_config = ly_dma_base_config;
+    channel_config_set_chain_to(&ly_dma_1_config, ly_dma_2);
+    dma_channel_config ly_dma_2_config = ly_dma_base_config;
+    channel_config_set_chain_to(&ly_dma_2_config, ly_dma_1);
 
-    dma_channel_config cx_dma_1_config = cx_dma_base_config;
-    channel_config_set_chain_to(&cx_dma_1_config, cx_dma_2);
-    dma_channel_config cx_dma_2_config = cx_dma_base_config;
-    channel_config_set_chain_to(&cx_dma_2_config, cx_dma_1);
+    dma_channel_config rx_dma_1_config = rx_dma_base_config;
+    channel_config_set_chain_to(&rx_dma_1_config, rx_dma_2);
+    dma_channel_config rx_dma_2_config = rx_dma_base_config;
+    channel_config_set_chain_to(&rx_dma_2_config, rx_dma_1);
 
-    dma_channel_config cy_dma_1_config = cy_dma_base_config;
-    channel_config_set_chain_to(&cy_dma_1_config, cy_dma_2);
-    dma_channel_config cy_dma_2_config = cy_dma_base_config;
-    channel_config_set_chain_to(&cy_dma_2_config, cy_dma_1);
+    dma_channel_config ry_dma_1_config = ry_dma_base_config;
+    channel_config_set_chain_to(&ry_dma_1_config, ry_dma_2);
+    dma_channel_config ry_dma_2_config = ry_dma_base_config;
+    channel_config_set_chain_to(&ry_dma_2_config, ry_dma_1);
 
     // Apply configurations
-    dma_channel_configure(ax_dma_1, &ax_dma_1_config, ax_raw.data(),
-                          &pwm_pio->rxf[ax_sm], 0xFFFFFFFF,
+    dma_channel_configure(lx_dma_1, &lx_dma_1_config, lx_raw.data(),
+                          &pwm_pio->rxf[lx_sm], 0xFFFFFFFF,
                           true);  // Configure and start AX DMA 1
-    dma_channel_configure(ax_dma_2, &ax_dma_2_config, ax_raw.data(),
-                          &pwm_pio->rxf[ax_sm], 0xFFFFFFFF,
+    dma_channel_configure(lx_dma_2, &lx_dma_2_config, lx_raw.data(),
+                          &pwm_pio->rxf[lx_sm], 0xFFFFFFFF,
                           false);  // Configure but don't start AX DMA 2
 
-    dma_channel_configure(ay_dma_1, &ay_dma_1_config, ay_raw.data(),
-                          &pwm_pio->rxf[ay_sm], 0xFFFFFFFF,
+    dma_channel_configure(ly_dma_1, &ly_dma_1_config, ly_raw.data(),
+                          &pwm_pio->rxf[ly_sm], 0xFFFFFFFF,
                           true);  // Configure and start AY DMA 1
-    dma_channel_configure(ay_dma_2, &ay_dma_2_config, ay_raw.data(),
-                          &pwm_pio->rxf[ay_sm], 0xFFFFFFFF,
+    dma_channel_configure(ly_dma_2, &ly_dma_2_config, ly_raw.data(),
+                          &pwm_pio->rxf[ly_sm], 0xFFFFFFFF,
                           false);  // Configure but don't start AY DMA 2
 
-    dma_channel_configure(cx_dma_1, &cx_dma_1_config, cx_raw.data(),
-                          &pwm_pio->rxf[cx_sm], 0xFFFFFFFF,
+    dma_channel_configure(rx_dma_1, &rx_dma_1_config, rx_raw.data(),
+                          &pwm_pio->rxf[rx_sm], 0xFFFFFFFF,
                           true);  // Configure and start CX DMA 1
-    dma_channel_configure(cx_dma_2, &cx_dma_2_config, cx_raw.data(),
-                          &pwm_pio->rxf[cx_sm], 0xFFFFFFFF,
+    dma_channel_configure(rx_dma_2, &rx_dma_2_config, rx_raw.data(),
+                          &pwm_pio->rxf[rx_sm], 0xFFFFFFFF,
                           false);  // Configure but don't start CX DMA 2
 
-    dma_channel_configure(cy_dma_1, &cy_dma_1_config, cy_raw.data(),
-                          &pwm_pio->rxf[cy_sm], 0xFFFFFFFF,
+    dma_channel_configure(ry_dma_1, &ry_dma_1_config, ry_raw.data(),
+                          &pwm_pio->rxf[ry_sm], 0xFFFFFFFF,
                           true);  // Configure and start CY DMA 1
-    dma_channel_configure(cy_dma_2, &cy_dma_2_config, cy_raw.data(),
-                          &pwm_pio->rxf[cy_sm], 0xFFFFFFFF,
+    dma_channel_configure(ry_dma_2, &ry_dma_2_config, ry_raw.data(),
+                          &pwm_pio->rxf[ry_sm], 0xFFFFFFFF,
                           false);  // Configure but don't start CY DMA 2
 
     // Start all PWM state machines at the same time
@@ -438,7 +446,7 @@ void analog_main() {
     // Allow core 0 to continue (start responding to console polls) after
     // reading analog inputs once
     read_triggers(triggers_raw[0], triggers_raw[1]);
-    read_sticks(ax_raw, ay_raw, cx_raw, cy_raw);
+    read_sticks(lx_raw, ly_raw, rx_raw, ry_raw);
     multicore_fifo_push_blocking(INTERCORE_SIGNAL);
 
     // Enable lockout
@@ -446,7 +454,7 @@ void analog_main() {
 
     while (1) {
         read_triggers(triggers_raw[0], triggers_raw[1]);
-        read_sticks(ax_raw, ay_raw, cx_raw, cy_raw);
+        read_sticks(lx_raw, ly_raw, rx_raw, ry_raw);
     }
 }
 
@@ -454,14 +462,16 @@ void analog_main() {
 void read_triggers(uint8_t lt_raw, uint8_t rt_raw) {
     controller_configuration &config = controller_configuration::get_instance();
 
-    apply_trigger_mode_analog(
-        state.l_trigger, lt_raw, config.l_trigger_threshold_value(),
-        state.left_trigger_pressed, !state.left_trigger_jump,
-        config.l_trigger_mode(), config.r_trigger_mode());
-    apply_trigger_mode_analog(
-        state.r_trigger, rt_raw, config.r_trigger_threshold_value(),
-        state.right_trigger_pressed, !state.right_trigger_jump,
-        config.r_trigger_mode(), config.l_trigger_mode());
+    apply_trigger_mode_analog(state.l_trigger, lt_raw,
+                              config.l_trigger_threshold_value(),
+                              state.buttons & (1 << LT_DIGITAL) != 0,
+                              config.mapping(LT_DIGITAL) == LT_DIGITAL,
+                              config.l_trigger_mode(), config.r_trigger_mode());
+    apply_trigger_mode_analog(state.r_trigger, rt_raw,
+                              config.r_trigger_threshold_value(),
+                              state.buttons & (1 << RT_DIGITAL) != 0,
+                              config.mapping(RT_DIGITAL) == RT_DIGITAL,
+                              config.r_trigger_mode(), config.l_trigger_mode());
 }
 
 // Modify analog value based on the trigger mode
@@ -516,26 +526,26 @@ void apply_trigger_mode_analog(uint8_t &out, uint8_t analog_value,
     }
 }
 
-void read_sticks(const std::array<uint32_t, 2> &ax_raw,
-                 const std::array<uint32_t, 2> &ay_raw,
-                 const std::array<uint32_t, 2> &cx_raw,
-                 const std::array<uint32_t, 2> &cy_raw) {
-    uint ax_high_total = 0;
-    uint ax_low_total = 0;
-    uint ay_high_total = 0;
-    uint ay_low_total = 0;
-    uint cx_high_total = 0;
-    uint cx_low_total = 0;
-    uint cy_high_total = 0;
-    uint cy_low_total = 0;
+void read_sticks(const std::array<uint32_t, 2> &lx_raw,
+                 const std::array<uint32_t, 2> &ly_raw,
+                 const std::array<uint32_t, 2> &rx_raw,
+                 const std::array<uint32_t, 2> &ry_raw) {
+    uint lx_high_total = 0;
+    uint lx_low_total = 0;
+    uint ly_high_total = 0;
+    uint ly_low_total = 0;
+    uint rx_high_total = 0;
+    uint rx_low_total = 0;
+    uint ry_high_total = 0;
+    uint ry_low_total = 0;
     for (uint i = 0; i < SAMPLES_PER_READ; ++i) {
-        ax_high_total += ax_raw[0] + 3;
-        ax_low_total += ax_raw[1];
-        ay_high_total += ay_raw[0] + 3;
-        ay_low_total += ay_raw[1];
-        cx_high_total += cx_raw[0] + 3;
-        cx_low_total += cx_raw[1];
-        cy_high_total += cy_raw[0] + 3;
-        cy_low_total += cy_raw[1];
+        lx_high_total += lx_raw[0] + 3;
+        lx_low_total += lx_raw[1];
+        ly_high_total += ly_raw[0] + 3;
+        ly_low_total += ly_raw[1];
+        rx_high_total += rx_raw[0] + 3;
+        rx_low_total += rx_raw[1];
+        ry_high_total += ry_raw[0] + 3;
+        ry_low_total += ry_raw[1];
     }
 }

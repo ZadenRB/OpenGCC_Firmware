@@ -51,7 +51,7 @@ enum trigger_mode {
 constexpr uint8_t TRIGGER_THRESHOLD_MIN = 49;
 
 /// \brief Maximum value for trigger threshold
-constexpr uint8_t TRIGGER_THRESHOLD_MAX = 227;
+constexpr uint8_t TRIGGER_THRESHOLD_MAX = 226;
 
 /** \brief Settings which a player might change when playing different games
  *

@@ -14,8 +14,8 @@
 ;    You should have received a copy of the GNU General Public License along with
 ;   NobGCC-SW If not, see http://www.gnu.org/licenses/.
 
-.define PUBLIC TX_SYS_IRQ 0
-.define PUBLIC RX_WAIT_IRQ 1
+.define public TX_SYS_IRQ 0
+.define public RX_WAIT_IRQ 1
 .define TX_WAIT_IRQ 4
 
 .program joybus_rx
@@ -29,6 +29,8 @@
 ; Autopush should be configured with a threshold of 8 bits
 ;
 ; The ISR should be configured to shift left
+;
+; The FIFOs should be joined for RX only
 ;
 ; IN/WAIT pin base should be set to data pin
 ;

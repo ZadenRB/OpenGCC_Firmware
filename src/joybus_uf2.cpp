@@ -51,12 +51,12 @@ void joybus_uf2_init(PIO joybus_pio, uint rx_sm, uint sm, uint dma) {
     channel_config_set_transfer_data_size(&dma_config, DMA_SIZE_8);
     channel_config_set_ring(&dma_config, true, 9);  // Wrap after 512 bytes
     channel_config_set_dreq(&dma_config,
-                            pio_get_dreq(joybus_pio, joybus_rx_sm, false));
+                            pio_get_dreq(joybus_pio, rx_sm, false));
     channel_config_set_chain_to(&dma_config, dma_channel);
 
     // Start DMA
     dma_channel_configure(dma_channel, &dma_config, &block,
-                          &joybus_pio->rxf[joybus_rx_sm], 0xFFFFFFFF, true);
+                          &joybus_pio->rxf[rx_sm], 0xFFFFFFFF, true);
 
     // Reset variables
     num_blocks = 0;
@@ -70,7 +70,6 @@ void joybus_uf2_enter() {
 
     // Reset once all blocks have been programmed
     busy_wait_ms(10);
-    restart_controller();
 }
 
 void handle_joybus_uf2_block() {
@@ -81,7 +80,6 @@ void handle_joybus_uf2_block() {
         tx_buf[0] = 0x01;
         send_data(1);
         busy_wait_ms(10);
-        restart_controller();
     }
 
     // Block was outside of the valid address range
@@ -91,7 +89,6 @@ void handle_joybus_uf2_block() {
         tx_buf[0] = 0x02;
         send_data(1);
         busy_wait_ms(10);
-        restart_controller();
     }
 
     // Firmware being sent was too large
@@ -100,7 +97,6 @@ void handle_joybus_uf2_block() {
         tx_buf[0] = 0x03;
         send_data(1);
         busy_wait_ms(10);
-        restart_controller();
     }
 
     // Number of blocks changed
@@ -109,7 +105,6 @@ void handle_joybus_uf2_block() {
         tx_buf[0] = 0x04;
         send_data(1);
         busy_wait_ms(10);
-        restart_controller();
     }
 
     // Block contained the UF2_FLAG_NOT_MAIN_FLASH marking
@@ -118,7 +113,6 @@ void handle_joybus_uf2_block() {
         tx_buf[0] = 0x05;
         send_data(1);
         busy_wait_ms(10);
-        restart_controller();
     }
 
     // Handle valid block

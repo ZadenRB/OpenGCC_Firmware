@@ -24,9 +24,59 @@
 #include "joybus_uf2.hpp"
 #include "state.hpp"
 
-std::array<uint8_t, 10> tx_buf;
+PIO joybus_pio;
+uint joybus_tx_sm;
+uint joybus_rx_sm;
+uint joybus_rx_offset;
+uint joybus_tx_dma;
 
-// Process a request from the console
+std::array<uint8_t, 10> tx_buf = {};
+
+void joybus_init(PIO pio, uint data_pin) {
+    // Pull up data line
+    gpio_pull_up(data_pin);
+
+    // Joybus PIO
+    joybus_pio = pio;
+
+    // Joybus RX
+    joybus_rx_offset = pio_add_program(joybus_pio, &joybus_rx_program);
+    joybus_rx_sm = pio_claim_unused_sm(joybus_pio, true);
+
+    // Joybus RX IRQ
+    irq_set_exclusive_handler(PIO0_IRQ_0, handle_console_request);
+    pio_set_irq0_source_enabled(joybus_pio,
+                                static_cast<pio_interrupt_source>(
+                                    pis_sm0_rx_fifo_not_empty + joybus_rx_sm),
+                                true);
+
+    // Joybus TX
+    uint tx_offset = pio_add_program(joybus_pio, &joybus_tx_program);
+    joybus_tx_sm = pio_claim_unused_sm(joybus_pio, true);
+    joybus_tx_program_init(joybus_pio, joybus_tx_sm, tx_offset, data_pin);
+
+    // Joybus TX DMA
+    joybus_tx_dma = dma_claim_unused_channel(true);
+    dma_channel_config tx_config =
+        dma_channel_get_default_config(joybus_tx_dma);
+    channel_config_set_read_increment(&tx_config, true);
+    channel_config_set_transfer_data_size(&tx_config, DMA_SIZE_8);
+    channel_config_set_dreq(&tx_config,
+                            pio_get_dreq(joybus_pio, joybus_tx_sm, true));
+    dma_channel_set_config(joybus_tx_dma, &tx_config, false);
+    dma_channel_set_write_addr(joybus_tx_dma, &joybus_pio->txf[joybus_tx_sm],
+                               false);
+
+    pio_sm_put_blocking(joybus_pio, joybus_tx_sm, FIFO_EMPTY);
+
+    irq_set_enabled(PIO0_IRQ_0, true);
+
+    joybus_rx_program_init(joybus_pio, joybus_rx_sm, joybus_rx_offset,
+                           data_pin);
+
+    pio_restart_sm_mask(joybus_pio, (1 << joybus_rx_sm) | (1 << joybus_tx_sm));
+}
+
 void handle_console_request() {
     uint32_t cmd = pio_sm_get(joybus_pio, joybus_rx_sm);
 
@@ -63,8 +113,9 @@ void handle_console_request() {
     }
 
     // Move to code to process stop bit
-    pio_sm_exec(joybus_pio, joybus_rx_sm,
-                pio_encode_jmp(joybus_rx_offset + joybus_rx_offset_read_stop_bit));
+    pio_sm_exec(
+        joybus_pio, joybus_rx_sm,
+        pio_encode_jmp(joybus_rx_offset + joybus_rx_offset_read_stop_bit));
 
     switch (cmd) {
         case 0xFF:
@@ -121,17 +172,14 @@ void handle_console_request() {
     return;
 }
 
-// Send buffer of data
 void send_data(uint32_t length) {
-    dma_channel_config tx_config = dma_get_channel_config(joybus_tx_dma);
-    dma_channel_configure(joybus_tx_dma, &tx_config, &joybus_pio->txf[joybus_tx_sm],
-                          tx_buf.data(), length, true);
+    dma_channel_transfer_from_buffer_now(joybus_tx_dma, tx_buf.data(), length);
     pio_interrupt_clear(joybus_pio, TX_SYS_IRQ);
 }
 
-// Send controller state in given mode
 void send_mode(uint8_t mode) {
-    uint32_t length;
+    uint32_t length = 0;
+
     switch (mode) {
         case 0x00:
             length = 8;

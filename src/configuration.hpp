@@ -20,6 +20,7 @@
 #define CONFIGURATION_H_
 
 #include <array>
+#include <functional>
 
 #include "hardware/flash.h"
 #include "state.hpp"
@@ -35,7 +36,7 @@
  */
 
 /// \brief Enumeration of trigger modes
-enum trigger_mode {
+enum trigger_mode : uint {
     both,          ///< Analog and digital output (OEM behavior)
     digital_only,  ///< Digital output only
     analog_only,   ///< Analog output only
@@ -44,14 +45,21 @@ enum trigger_mode {
     both_on_digital,    ///< Analog and digital output on digital press
     analog_multiplied,  ///< Analog and digital output, analog value scaled up
     last_trigger_mode =
-        analog_multiplied,  ///< Set to last real value of enumeration
+        analog_multiplied,     ///< Set to last value of enumeration
+    first_trigger_mode = both  ///< Set to first value of enumeration
 };
 
 /// \brief Minimum value for trigger threshold, set to Melee Z shield value
 constexpr uint8_t TRIGGER_THRESHOLD_MIN = 49;
 
 /// \brief Maximum value for trigger threshold
-constexpr uint8_t TRIGGER_THRESHOLD_MAX = 226;
+constexpr uint8_t TRIGGER_THRESHOLD_MAX = 209;
+
+/// \brief Value to scale threshold by for analog multiplication trigger mode
+constexpr float TRIGGER_MULTIPLIER_M = .0125f;
+
+/// \brief Value to add to threshold for analog multiplication trigger mode
+constexpr float TRIGGER_MULTIPLIER_B = 0.3875f;
 
 /** \brief Settings which a player might change when playing different games
  *
@@ -81,7 +89,7 @@ constexpr size_t NUM_COEFFICIENTS = 4;
 /// \brief Number of calibration points
 constexpr size_t NUM_CALIBRATION_POINTS = 9;
 
-/// \brief Expected value for each calibration point on x axis
+/// \brief Expected value for each calibration point on x-axis
 constexpr std::array<double, NUM_CALIBRATION_POINTS> EXPECTED_X = {
     0.00, 1.00, 0.71, 0.00, -0.71, -1.00, -0.71, 0.00, 0.71};
 
@@ -91,7 +99,7 @@ constexpr std::array<double, NUM_CALIBRATION_POINTS> EXPECTED_Y = {
 
 /// \brief Calibration points for x & y axis of an analog stick.
 struct stick_coefficients {
-    /// \brief Coefficients for x axis linearization
+    /// \brief Coefficients for x-axis linearization
     std::array<double, NUM_COEFFICIENTS> x_coefficients;
 
     /// \brief Coefficients for y axis of linearization
@@ -105,6 +113,7 @@ struct stick_coefficients {
 class controller_configuration {
    private:
     controller_configuration();
+    controller_configuration &operator=(controller_configuration &&) = default;
 
     static uint32_t read_page();
     static uint32_t write_page();
@@ -127,11 +136,18 @@ class controller_configuration {
      */
     static controller_configuration &get_instance();
 
+    /** \brief Reload the configuration from flash/defaults
+     *
+     * \note Should only be used if the last sector of flash, which contains
+     * configurations, is written to without updating the configuration in
+     * memory accordingly.
+     */
+    static void reload_instance();
+
     controller_configuration(const controller_configuration &) = delete;
     controller_configuration(const controller_configuration &&) = delete;
     controller_configuration &operator=(const controller_configuration &) =
         delete;
-    controller_configuration &operator=(controller_configuration &&) = delete;
 
     /// \brief Persist the current configuration to flash
     void persist();
@@ -167,12 +183,11 @@ class controller_configuration {
      *
      * \param to_calibrate Output for coefficients
      * \param display_stick Stick to display calibration step to
-     * \param x_raw Address to read x values from
-     * \param y_raw Address to read y values from
+     * \param get_stick Function to get stick
      */
-    void calibrate_stick(stick_coefficients &to_calibrate, stick &display_stick,
-                         const std::array<uint32_t, 2> &x_raw,
-                         const std::array<uint32_t, 2> &y_raw);
+    void calibrate_stick(
+        stick_coefficients &to_calibrate, stick &display_stick,
+        std::function<void(double &, double &, size_t)> get_stick);
 
     /// \brief Erase all stored configurations
     static void factory_reset();

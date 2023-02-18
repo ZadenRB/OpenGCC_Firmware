@@ -23,6 +23,8 @@
 
 #include <array>
 
+#include "hardware/pio.h"
+
 /** \file joybus.hpp
  * \brief Joybus protocol implementation
  *
@@ -275,27 +277,39 @@
 /// \brief Global buffer for bytes to transmit
 extern std::array<uint8_t, 10> tx_buf;
 
+/** \brief Initialize Joybus functionality
+ *
+ * \param pio The PIO instance to use for Joybus
+ * \param data_pin the I/O pin to use for Joybus
+*/
+void joybus_init(PIO pio, uint data_pin);
+
 /** \brief Interrupt handler that reads commands and starts response
  * transmission
  */
 void handle_console_request();
 
-/** \brief Triggers a transmission of the specified length from `tx_buf`
+/** \brief Triggers a transmission of the specified length from the transmission
+ * buffer
  *
- * \note Transmissions are handled asynchronously. Once data is placed in
- * `tx_buf`, calling `send_data` just configures the DMA to move data from
- * `tx_buf` to the Joybus TX state machine, so other controller processes can
+ * \note Transmissions are handled asynchronously. This function simply
+ * configures the DMA to transfer the specified length from the transmission
+ * buffer to the Joybus TX state machine, so other controller processes can
  * continue to run in the background as data is fed to the state machine.
  *
- * \param length Number of bytes from `tx_buf` to send
+ * \param length Number of bytes from data to send
  */
 void send_data(uint32_t length);
 
-/** \brief Fills `tx_buf` with appropriate data based on a specific poll mode
+/** \brief Sends controller state with appropriate data based on a specific poll
+ * mode
  *
  * \param mode The poll mode which determines how controller state is mapped
- * into `tx_buf`
+ * for transmission
  */
 void send_mode(uint8_t mode);
+
+/// \brief Magic number for TX PIO to pull when FIFO is empty
+constexpr uint32_t FIFO_EMPTY = 0x00FF00FF;
 
 #endif  // JOYBUS_H_

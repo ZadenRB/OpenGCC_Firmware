@@ -41,7 +41,7 @@ constexpr uint8_t TRIGGER_TRICK_THRESHOLD = 5;
 
 /// \brief Grouping of axes for a single analog stick
 struct stick {
-    /// \brief X axis
+    /// \brief x-axis
     uint8_t x;
     /// \brief Y axis
     uint8_t y;
@@ -80,20 +80,5 @@ struct controller_state {
  * from one core or in critical sections.
  */
 extern controller_state state;
-
-/// \brief PIO being used for Joybus protocol
-extern PIO joybus_pio;
-
-/// \brief State machine being used for Joybus TX
-extern uint joybus_tx_sm;
-
-/// \brief State machine being used for Joybus RX
-extern uint joybus_rx_sm;
-
-/// \brief Offset into PIO instruction memory of the RX program
-extern uint joybus_rx_offset;
-
-/// \brief DMA channel being used for Joybus TX
-extern uint joybus_tx_dma;
 
 #endif  // STATE_H_

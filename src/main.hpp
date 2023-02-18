@@ -68,18 +68,11 @@ void check_combos(uint32_t physical_buttons);
 /// \brief Executes the current combo
 void execute_combo();
 
-/// \brief Toggle safe mode on or off
-void toggle_safe_mode();
-
 /// \brief Main analog input loop, run on second core
 void analog_main();
 
-/** \brief Process analog trigger values
- *
- * \param lt_raw Raw value of left trigger
- * \param rt_raw Raw value of right trigger
- */
-void read_triggers(uint8_t lt_raw, uint8_t rt_raw);
+/// \brief Process analog trigger values
+void read_triggers();
 
 /**
  * \brief Update analog trigger value based on trigger mode
@@ -105,9 +98,6 @@ void apply_trigger_mode_analog(uint8_t& out, uint8_t analog_value,
  * \param rx_raw Location of PWM high / low data for right stick X
  * \param ry_raw Location of PWM high / low data for right stick Y
  */
-void read_sticks(const std::array<uint32_t, 2>& lx_raw,
-                 const std::array<uint32_t, 2>& ly_raw,
-                 const std::array<uint32_t, 2>& rx_raw,
-                 const std::array<uint32_t, 2>& ry_raw);
+void read_sticks();
 
 #endif  // MAIN_H_

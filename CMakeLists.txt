@@ -5,6 +5,8 @@ include(pico_sdk_import.cmake)
 project(NobGCC C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
+# Allow link-time optimization
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -flto")
 pico_sdk_init()
 
 if (TARGET tinyusb_device)

@@ -14,6 +14,9 @@
 ;    You should have received a copy of the GNU General Public License along with
 ;   NobGCC-SW If not, see http://www.gnu.org/licenses/.
 
+.define public PWM_HIGH_CORRECTION 4
+.define public PWM_LOW_CORRECTION 1
+
 .program read_pwm
 
 ; Reads PWM inputs
@@ -21,36 +24,40 @@
 ; First value pushed to RX FIFO (FIFO[0]) is the `high pulse width count - 3`
 ; Second value pushed to RX FIFO (FIFO[1]) is the `low pulse width count`
 ;
-; (FIFO[0] + 3) / (FIFO[0] + 3 + FIFO[1]) gives the % duty cycle
+; (FIFO[0] + 4) / (FIFO[0] + 4 + FIFO[1] + 1) gives the % duty cycle
 ;
 ; DMA should be setup to pull on SM RX FIFO DREQ to avoid FIFO getting backed up
 ;
 ; SM clock should be set to system clock
+;
+; The FIFOs should be joined for RX only
 ;
 ; IN/WAIT pin base should be set to whichever pin is connected to the PWM input
 ;
 ; EXECCTRL_JMP_PIN should be set to whichever pin is connected to the PWM input
 
 start:
-    wait 0 pin 0            ; wait for the pin to go low
-    wait 1 pin 0        [4] ; wait for the pin to go high, delay for 4 cycles here so that the first high pulse is off by 6 cycles, as future iterations are
+  wait 0 pin 0            ; wait for the pin to go low
+  wait 1 pin 0        [5] ; wait for the pin to go high, delay for 5 cycles here so that the first high pulse is off by 8 cycles, as future iterations are
 .wrap_target
-    mov x, ~null            ; high is 0xFFFFFFFF
-    mov y, ~null            ; low is 0xFFFFFFFF
+  mov x, ~null            ; high is 0xFFFFFFFF
+  mov y, ~null            ; low is 0xFFFFFFFF
 count_high:
-    jmp x-- check_high      ; decrement high pulse width counter
-    jmp start               ; if the counter hits 0, abort & wait for another pulse to start
+  jmp x-- check_high      ; decrement high pulse width counter
+  jmp start               ; if the counter hits 0, abort & wait for another pulse to start
 check_high:
-    jmp pin count_high      ; if pin is still high, continue to count high pulse width
+  jmp pin count_high      ; if pin is still high, continue to count high pulse width
 count_low:
-    jmp pin send_sample     ; if the pin has gone high again, send the sample and restart counting
-    jmp y-- count_low       ; decrement low pulse width counter
-    jmp start               ; if the counter hits 0, abort & wait for another pulse to start
+  jmp pin send_sample     ; if the pin has gone high again, send the sample and restart counting
+  jmp y-- count_low       ; decrement low pulse width counter
+  jmp start               ; if the counter hits 0, abort & wait for another pulse to start
 send_sample:
-    mov isr, ~x             ; move the high pulse width counter into the ISR
-    push NOBLOCK            ; push the high pulse width counter into the RX FIFO
-    mov isr, ~y             ; push the low pulse width counter into the ISR
-    push NOBLOCK            ; push the low pulse width counter into the RX FIFO
+  mov isr, ~x             ; move the high pulse width counter into the ISR
+  push noblock            ; push the high pulse width counter into the RX FIFO
+  mov isr, ~y             ; move the low pulse width counter into the ISR
+  push noblock            ; push the low pulse width counter into the RX FIFO
+  nop                     ; delay 1 extra cycle so that we are off by an even number of cycles
+
 .wrap
 
 % c-sdk {
@@ -58,19 +65,18 @@ static inline void read_pwm_program_init(PIO pio, uint sm, uint offset, uint pwm
   // Get default config
   pio_sm_config c = read_pwm_program_get_default_config(offset);
 
-  // Set in pin to the data pin
+  // Join TX & RX FIFO for RX only
+  sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
+
+  // Configure SM pins
   sm_config_set_in_pins(&c, pwm_pin);
-
-  // Set jump pin to the data pin
   sm_config_set_jmp_pin(&c, pwm_pin);
-
-  // Connect PIO to data pin
-  pio_gpio_init(pio, pwm_pin);
-
-  // Set pin to input
   pio_sm_set_consecutive_pindirs(pio, sm, pwm_pin, 1, false);
   
   // Load configuration
   pio_sm_init(pio, sm, offset, &c);
+
+  // Start the state machine
+  pio_sm_set_enabled(pio, sm, true);
 }
 %}

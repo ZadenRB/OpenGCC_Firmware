@@ -100,9 +100,6 @@ constexpr uint16_t PHYSICAL_BUTTONS_MASK =
     (1 << Z) | (1 << RT_DIGITAL) | (1 << LT_DIGITAL) | (1 << A) | (1 << B) |
     (1 << X) | (1 << Y) | (1 << START);
 
-/// \brief Mask on button state to return only jump buttons
-constexpr uint16_t JUMP_MASK = (1 << X) | (1 << Y);
-
 /// \brief Mask on ADC channels to return only triggers
 constexpr uint TRIGGER_ADC_MASK =
     (1 << LT_ANALOG_ADC_INPUT) | (1 << RT_ANALOG_ADC_INPUT);
@@ -112,10 +109,50 @@ constexpr uint TRIGGER_ADC_MASK =
  */
 constexpr uint32_t INTERCORE_SIGNAL = 0x623F16E4;
 
-/// \brief Magic number for TX PIO to pull when FIFO is empty
-constexpr uint32_t FIFO_EMPTY = 0x00FF00FF;
+/// \brief Initialize button reading functionality
+void init_buttons();
 
-/// \brief Restart the controller
-void restart_controller();
+/// \brief Get physical button states in the order they are sent to the console
+void get_buttons(uint16_t &out);
+
+/// \brief Initialize stick reading functionality
+void init_sticks();
+
+/** \brief Get the value of both sticks
+ *
+ * \param lx_out Output for left stick x-axis
+ * \param ly_out Output for left stick y-axis
+ * \param rx_out Output for right stick x-axis
+ * \param ry_out Output for right stick y-axis
+ * \param num_samples Number of samples to average for the stick values
+ */
+void get_sticks(double &lx_out, double &ly_out, double &rx_out, double &ry_out,
+                size_t num_samples);
+
+/** \brief Get the value of the left stick
+ *
+ * \param x_out Output for x-axis
+ * \param y_out Output for y-axis
+ * \param num_samples Number of samples to average for the stick values
+ */
+void get_left_stick(double &x_out, double &y_out, size_t num_samples);
+
+/** \brief Get the value of the right stick
+ *
+ * \param x_out Output for x-axis
+ * \param y_out Output for y-axis
+ * \param num_samples Number of samples to average for the stick values
+ */
+void get_right_stick(double &x_out, double &y_out, size_t num_samples);
+
+/// \brief Initialize trigger reading functionality
+void init_triggers();
+
+/** \brief Get the raw value of the triggers
+ *
+ * \param l_out Output for left trigger
+ * \param r_out Output for right trigger
+ */
+void get_triggers(uint8_t &l_out, uint8_t &r_out);
 
 #endif  // BOARD_H_

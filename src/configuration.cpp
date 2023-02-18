@@ -22,6 +22,7 @@
 #include "calibration.hpp"
 #include "hardware/gpio.h"
 #include "pico/multicore.h"
+#include "read_pwm.pio.h"
 
 controller_configuration::controller_configuration() {
     uint32_t read_page = controller_configuration::read_page();
@@ -67,14 +68,21 @@ controller_configuration::controller_configuration() {
     controller_configuration *config_in_flash =
         reinterpret_cast<controller_configuration *>(
             CONFIG_SRAM_BASE + (read_page * FLASH_PAGE_SIZE));
-    profiles = config_in_flash->profiles;
+    for (size_t i = 0; i < profiles.size(); ++i) {
+        profiles[i] = config_in_flash->profiles[i];
+    }
     current_profile = config_in_flash->current_profile;
-    // TODO: Load coefficients
+    l_stick_coefficients = config_in_flash->l_stick_coefficients;
+    r_stick_coefficients = config_in_flash->r_stick_coefficients;
 }
 
 controller_configuration &controller_configuration::get_instance() {
     static controller_configuration instance;
     return instance;
+}
+
+void controller_configuration::reload_instance() {
+    get_instance() = controller_configuration();
 }
 
 uint32_t controller_configuration::read_page() {
@@ -152,7 +160,9 @@ void controller_configuration::swap_mappings() {
 
     while (true) {
         // Get buttons
-        uint32_t physical_buttons = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
+        uint16_t physical_buttons;
+        get_buttons(physical_buttons);
+
         state.buttons =
             physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
 
@@ -216,7 +226,8 @@ void controller_configuration::configure_triggers() {
 
     while (true) {
         // Get buttons
-        uint32_t physical_buttons = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
+        uint16_t physical_buttons;
+        get_buttons(physical_buttons);
         state.buttons =
             physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
 
@@ -267,12 +278,14 @@ void controller_configuration::configure_triggers() {
             last_combo = combo;
 
             uint new_offset = *offset;
+            uint new_mode = *mode;
             // Update mode/offset based on combo
             switch (combo) {
                 case (1 << A):
-                    *mode = static_cast<trigger_mode>((*mode + 1) %
-                                                      (last_trigger_mode + 1));
+                    new_mode += 1U;
                     break;
+                case (1 << B):
+                    new_mode -= 1U;
                 case (1 << DPAD_UP):
                     new_offset += 1U;
                     break;
@@ -290,6 +303,14 @@ void controller_configuration::configure_triggers() {
                     last_combo = 0;
                     same_combo_count = 0;
                     break;
+            }
+
+            if (new_mode < first_trigger_mode) {
+                *mode = last_trigger_mode;
+            } else if (new_mode > last_trigger_mode) {
+                *mode = first_trigger_mode;
+            } else {
+                *mode = static_cast<trigger_mode>(new_mode);
             }
 
             if (new_offset < TRIGGER_THRESHOLD_MIN) {
@@ -317,8 +338,7 @@ void controller_configuration::configure_triggers() {
 
 void controller_configuration::calibrate_stick(
     stick_coefficients &to_calibrate, stick &display_stick,
-    const std::array<uint32_t, 2> &x_raw,
-    const std::array<uint32_t, 2> &y_raw) {
+    std::function<void(double &, double &, size_t)> get_stick) {
     // Initialize variables
     stick_calibration calibration(display_stick);
     bool buttons_released = false;
@@ -328,7 +348,8 @@ void controller_configuration::calibrate_stick(
         calibration.display_step();
 
         // Get buttons
-        uint32_t physical_buttons = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
+        uint16_t physical_buttons;
+        get_buttons(physical_buttons);
         state.buttons =
             physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
 
@@ -355,22 +376,9 @@ void controller_configuration::calibrate_stick(
                 calibration.undo_measurement();
                 break;
             case (1 << A): {
-                uint x_high_total = 0;
-                uint x_low_total = 0;
-                uint y_high_total = 0;
-                uint y_low_total = 0;
-                for (uint i = 0; i < SAMPLES_PER_READ; ++i) {
-                    x_high_total += x_raw[0] + 3;
-                    x_low_total += x_raw[1];
-                    y_high_total += y_raw[0] + 3;
-                    y_low_total += y_raw[1];
-                }
-                double measured_x =
-                    x_high_total /
-                    static_cast<double>(x_low_total + x_high_total);
-                double measured_y =
-                    y_high_total /
-                    static_cast<double>(y_low_total + y_high_total);
+                double measured_x;
+                double measured_y;
+                get_stick(measured_x, measured_y, SAMPLES_PER_READ);
                 calibration.record_measurement(measured_x, measured_y);
                 break;
             }
@@ -383,6 +391,7 @@ void controller_configuration::calibrate_stick(
 
 void controller_configuration::factory_reset() {
     flash_range_erase(CONFIG_FLASH_BASE, FLASH_SECTOR_SIZE);
+    reload_instance();
+    state = controller_state();
     state.display_alert();
-    restart_controller();
 }

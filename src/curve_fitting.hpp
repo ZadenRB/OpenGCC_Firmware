@@ -32,10 +32,14 @@
  * \tparam N Dimension of array
  * \param out Output for the inverse
  * \param in Matrix to calculate the inverse of
+ *
+ * \return Inverse of array
  */
 template <std::size_t N>
-void convert_to_inverse(std::array<std::array<double, N>, N>& out,
-                        const std::array<std::array<double, N>, N>& in) {
+std::array<std::array<double, N>, N> convert_to_inverse(
+    const std::array<std::array<double, N>, N>& in) {
+    std::array<std::array<double, N>, N> ret = {};
+
     // Fill inverse with input array
     std::array<std::array<double, N>, 2 * N> inverse = {};
     for (std::size_t r = 0; r < N; ++r) {
@@ -81,9 +85,11 @@ void convert_to_inverse(std::array<std::array<double, N>, N>& out,
     // Populate out array
     for (std::size_t r = 0; r < N; ++r) {
         for (std::size_t c = 0; c < N; ++c) {
-            out[c][r] = inverse[c + N][r];
+            ret[c][r] = inverse[c + N][r];
         }
     }
+
+    return ret;
 }
 
 /** \brief Generates coefficients for an polynomial to map
@@ -102,12 +108,15 @@ void convert_to_inverse(std::array<std::array<double, N>, N>& out,
  * \param coefficients Output array for coefficients
  * \param measured_coordinates The measured input coordinates
  * \param expected_coordinates The expected output coordinates
+ *
+ * \return Coefficients to map measured to expected
  */
 template <std::size_t NCoefficients>
-void fit_curve(std::array<double, NCoefficients>& coefficients,
-               const std::vector<double>& measured_coordinates,
-               const std::vector<double>& expected_coordinates) {
+std::array<double, NUM_COEFFICIENTS> fit_curve(
+    const std::vector<double>& measured_coordinates,
+    const std::vector<double>& expected_coordinates) {
     assert(measured_coordinates.size() == expected_coordinates.size());
+    std::array<double, NUM_COEFFICIENTS> ret = {};
     size_t num_coordinates = measured_coordinates.size();
 
     std::array<std::array<double, NCoefficients>, NCoefficients> a = {};
@@ -154,16 +163,18 @@ void fit_curve(std::array<double, NCoefficients>& coefficients,
         b[i] = sum;
     }
 
-    std::array<std::array<double, NCoefficients>, NCoefficients> inverse = {};
-    convert_to_inverse(inverse, a);
+    std::array<std::array<double, NCoefficients>, NCoefficients> inverse =
+        convert_to_inverse(a);
 
     for (std::size_t r = 0; r < NCoefficients; ++r) {
         double value = 0;
         for (std::size_t c = 0; c < NCoefficients; ++c) {
             value += inverse[c][r] * b[c];
         }
-        coefficients[r] = value;
+        ret[r] = value;
     }
+
+    return ret;
 }
 
 #endif  // CURVE_FITTING_H_

@@ -134,7 +134,7 @@ void handle_console_request() {
             break;
         case 0x41:
             state.origin = 0;
-            request[0] = 0x05;
+            request[0] = 0x06;
             break;
         case 0x42:
         case 0x43:
@@ -178,11 +178,8 @@ void send_data(uint32_t length) {
 }
 
 void send_mode(uint8_t mode) {
-    uint32_t length = 0;
-
     switch (mode) {
         case 0x00:
-            length = 8;
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
             tx_buf[2] = state.l_stick.x;
@@ -191,9 +188,9 @@ void send_mode(uint8_t mode) {
             tx_buf[5] = state.r_stick.y;
             tx_buf[6] = (state.l_trigger & 0xF0) | (state.r_trigger >> 4);
             tx_buf[7] = 0x00;
+            send_data(8);
             break;
         case 0x01:
-            length = 8;
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
             tx_buf[2] = state.l_stick.x;
@@ -202,9 +199,9 @@ void send_mode(uint8_t mode) {
             tx_buf[5] = state.l_trigger;
             tx_buf[6] = state.r_trigger;
             tx_buf[7] = 0x00;
+            send_data(8);
             break;
         case 0x02:
-            length = 8;
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
             tx_buf[2] = state.l_stick.x;
@@ -213,9 +210,9 @@ void send_mode(uint8_t mode) {
             tx_buf[5] = (state.l_trigger & 0xF0) | (state.r_trigger >> 4);
             tx_buf[6] = 0x00;
             tx_buf[7] = 0x00;
+            send_data(8);
             break;
         case 0x03:
-            length = 8;
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
             tx_buf[2] = state.l_stick.x;
@@ -224,9 +221,9 @@ void send_mode(uint8_t mode) {
             tx_buf[5] = state.r_stick.y;
             tx_buf[6] = state.l_trigger;
             tx_buf[7] = state.r_trigger;
+            send_data(8);
             break;
         case 0x04:
-            length = 8;
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
             tx_buf[2] = state.l_stick.x;
@@ -235,8 +232,9 @@ void send_mode(uint8_t mode) {
             tx_buf[5] = state.r_stick.y;
             tx_buf[6] = 0x00;
             tx_buf[7] = 0x00;
+            send_data(8);
+            break;
         case 0x05:
-            length = 10;
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
             tx_buf[2] = state.l_stick.x;
@@ -247,7 +245,21 @@ void send_mode(uint8_t mode) {
             tx_buf[7] = state.r_trigger;
             tx_buf[8] = 0x00;
             tx_buf[9] = 0x00;
+            send_data(10);
+            break;
+        case 0x06:
+            // Origin state
+            tx_buf[0] = 0x00;
+            tx_buf[1] = 0x80;
+            tx_buf[2] = 0x7F;
+            tx_buf[3] = 0x7F;
+            tx_buf[4] = 0x7F;
+            tx_buf[5] = 0x7F;
+            tx_buf[6] = 0x00;
+            tx_buf[7] = 0x00;
+            tx_buf[8] = 0x00;
+            tx_buf[9] = 0x00;
+            send_data(10);
             break;
     }
-    send_data(length);
 }

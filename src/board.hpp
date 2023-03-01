@@ -124,10 +124,10 @@ void init_sticks();
  * \param ly_out Output for left stick y-axis
  * \param rx_out Output for right stick x-axis
  * \param ry_out Output for right stick y-axis
- * \param num_samples Number of samples to average for the stick values
+ * \param sample_for_us Number of microseconds to sample for
  */
 void get_sticks(double &lx_out, double &ly_out, double &rx_out, double &ry_out,
-                size_t num_samples);
+                uint sample_for_us);
 
 /** \brief Get the value of the left stick
  *

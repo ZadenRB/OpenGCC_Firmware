@@ -86,17 +86,6 @@ struct configuration_profile {
 /// \brief Number of coefficients for stick linearization
 constexpr size_t NUM_COEFFICIENTS = 4;
 
-/// \brief Number of calibration points
-constexpr size_t NUM_CALIBRATION_POINTS = 9;
-
-/// \brief Expected value for each calibration point on x-axis
-constexpr std::array<double, NUM_CALIBRATION_POINTS> EXPECTED_X = {
-    0.00, 1.00, 0.71, 0.00, -0.71, -1.00, -0.71, 0.00, 0.71};
-
-/// \brief Expected value for each calibration point on y axis
-constexpr std::array<double, NUM_CALIBRATION_POINTS> EXPECTED_Y = {
-    0.00, 0, 0.71, 1.00, 0.71, 0, -0.71, -1.00, -0.71};
-
 /// \brief Calibration points for x & y axis of an analog stick.
 struct stick_coefficients {
     /// \brief Coefficients for x-axis linearization
@@ -210,4 +199,8 @@ constexpr uint32_t LAST_PAGE = PAGES_PER_SECTOR - 1;
 /// \brief The number of bytes the controller configuration occupies
 constexpr size_t CONFIG_SIZE = sizeof(controller_configuration);
 
+/** \brief How many milliseconds to debounce on button releases to prevent
+ * douvble presses when calibrating
+ */
+constexpr uint DEBOUNCE_TIME = 50;
 #endif  // CONFIGURATION_H_

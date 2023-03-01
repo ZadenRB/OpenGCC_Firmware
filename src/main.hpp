@@ -40,7 +40,7 @@ void read_digital(uint16_t physical_buttons);
  * \param to_remap Which bit to remap
  * \param mapping Which bit to map to
  */
-void remap(uint16_t physical_buttons, uint16_t& remapped_buttons,
+void remap(uint16_t& remapped_buttons, uint16_t physical_buttons,
            uint8_t to_remap, uint8_t mapping);
 
 /** \brief Update digital trigger value based on trigger mode
@@ -74,24 +74,22 @@ void analog_main();
 /// \brief Process analog trigger values
 void read_triggers();
 
-/**
- * \brief Update analog trigger value based on trigger mode
+/** \brief Update analog trigger value based on trigger mode
  *
- * \param out Where to ouput the updated analog trigger value
  * \param analog_value Current analog trigger value
  * \param threshold_value Configured threshold value
  * \param digital_value Digital value for this trigger
  * \param enable_analog Whether analog output is enabled
  * \param mode Current trigger mode
  * \param other_mode Current trigger mode of other trigger
+ *
+ * \return New analog value after applying trigger mode
  */
-void apply_trigger_mode_analog(uint8_t& out, uint8_t analog_value,
-                               uint8_t threshold_value, bool digital_value,
-                               bool enable_analog, trigger_mode mode,
-                               trigger_mode other_mode);
+uint8_t apply_trigger_mode_analog(uint8_t analog_value, uint8_t threshold_value,
+                                  bool digital_value, bool enable_analog,
+                                  trigger_mode mode, trigger_mode other_mode);
 
-/**
- * \brief Read and process analog sticks
+/** \brief Read and process analog sticks
  *
  * \param lx_raw Location of PWM high / low data for left stick X
  * \param ly_raw Location of PWM high / low data for left stick Y
@@ -99,5 +97,16 @@ void apply_trigger_mode_analog(uint8_t& out, uint8_t analog_value,
  * \param ry_raw Location of PWM high / low data for right stick Y
  */
 void read_sticks();
+
+/** \brief Linearize a stick using the given coefficients
+ *
+ * \param x_raw Raw x-axis value to linearize
+ * \param y_raw Raw y-axis value to linearize
+ * \param stick_coefficients Coefficients to use for x-axis linearization
+ *
+ * \return Linearized stick
+ */
+stick linearize_stick(double x_raw, double y_raw,
+                      stick_coefficients coefficients);
 
 #endif  // MAIN_H_

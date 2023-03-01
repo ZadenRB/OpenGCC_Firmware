@@ -18,6 +18,10 @@
 
 #include "main.hpp"
 
+// #include <stdio.h>
+
+#include <cmath>
+
 #include "hardware/clocks.h"
 #include "joybus.hpp"
 #include "pico/multicore.h"
@@ -31,6 +35,8 @@ int main() {
 
     // Configure system PLL to 128 MHZ
     set_sys_clock_pll(1536 * MHZ, 6, 2);
+
+    // stdio_init_all();
 
     // Launch analog on core 1
     multicore_launch_core1(analog_main);
@@ -55,33 +61,26 @@ int main() {
     uint16_t startup_buttons;
     get_buttons(startup_buttons);
     switch (startup_buttons) {
-        case (1 << START) | (1 << DPAD_LEFT):
+        case (1 << START) | (1 << A):
             config.select_profile(0);
             break;
-        case (1 << START) | (1 << DPAD_RIGHT):
+        case (1 << START) | (1 << B):
             config.select_profile(1);
             break;
     }
 
-    // if (config.l_stick_coefficients.x_coefficients ==
-    //         std::array<double, 4>{0, 0, 0, 0} ||
-    //     config.l_stick_coefficients.y_coefficients ==
-    //         std::array<double, 4>{0, 0, 0, 0}) {
-    //     config.calibrate_stick(config.l_stick_coefficients, state.r_stick,
-    //                            get_left_stick);
-    // }
-    // if (config.r_stick_coefficients.x_coefficients ==
-    //         std::array<double, 4>{0, 0, 0, 0} ||
-    //     config.r_stick_coefficients.y_coefficients ==
-    //         std::array<double, 4>{0, 0, 0, 0}) {
-    //     config.calibrate_stick(config.r_stick_coefficients, state.l_stick,
-    //                            get_right_stick);
-    // }
-
+    // Read buttons once before starting communication
     uint16_t physical_buttons;
     get_buttons(physical_buttons);
     read_digital(physical_buttons);
 
+    // printf("Equation: %lf + %lfx + %lfx^2 + %lfx^3\n",
+    //        config.l_stick_coefficients.x_coefficients[0],
+    //        config.l_stick_coefficients.x_coefficients[1],
+    //        config.l_stick_coefficients.x_coefficients[2],
+    //        config.l_stick_coefficients.x_coefficients[3]);
+
+    // Start console communication
     joybus_init(pio0, DATA);
 
     while (true) {
@@ -101,20 +100,22 @@ void read_digital(uint16_t physical_buttons) {
     uint16_t remapped_buttons = (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
 
     // Apply remaps
-    remap(physical_buttons, remapped_buttons, START, config.mapping(12));
-    remap(physical_buttons, remapped_buttons, Y, config.mapping(11));
-    remap(physical_buttons, remapped_buttons, X, config.mapping(10));
-    remap(physical_buttons, remapped_buttons, B, config.mapping(9));
-    remap(physical_buttons, remapped_buttons, A, config.mapping(8));
-    remap(physical_buttons, remapped_buttons, LT_DIGITAL, config.mapping(6));
-    remap(physical_buttons, remapped_buttons, RT_DIGITAL, config.mapping(5));
-    remap(physical_buttons, remapped_buttons, Z, config.mapping(4));
-    remap(physical_buttons, remapped_buttons, DPAD_UP, config.mapping(3));
-    remap(physical_buttons, remapped_buttons, DPAD_DOWN, config.mapping(2));
-    remap(physical_buttons, remapped_buttons, DPAD_RIGHT, config.mapping(1));
-    remap(physical_buttons, remapped_buttons, DPAD_LEFT, config.mapping(0));
+    remap(remapped_buttons, physical_buttons, START, config.mapping(12));
+    remap(remapped_buttons, physical_buttons, Y, config.mapping(11));
+    remap(remapped_buttons, physical_buttons, X, config.mapping(10));
+    remap(remapped_buttons, physical_buttons, B, config.mapping(9));
+    remap(remapped_buttons, physical_buttons, A, config.mapping(8));
+    remap(remapped_buttons, physical_buttons, LT_DIGITAL, config.mapping(6));
+    remap(remapped_buttons, physical_buttons, RT_DIGITAL, config.mapping(5));
+    remap(remapped_buttons, physical_buttons, Z, config.mapping(4));
+    remap(remapped_buttons, physical_buttons, DPAD_UP, config.mapping(3));
+    remap(remapped_buttons, physical_buttons, DPAD_DOWN, config.mapping(2));
+    remap(remapped_buttons, physical_buttons, DPAD_RIGHT, config.mapping(1));
+    remap(remapped_buttons, physical_buttons, DPAD_LEFT, config.mapping(0));
 
-    // If triggers are pressed (post remapping)
+    state.lt_pressed = (remapped_buttons & (1 << LT_DIGITAL)) != 0;
+    state.rt_pressed = (remapped_buttons & (1 << RT_DIGITAL)) != 0;
+
     // Apply digital trigger modes
     apply_trigger_mode_digital(remapped_buttons, LT_DIGITAL,
                                config.l_trigger_mode(),
@@ -128,7 +129,7 @@ void read_digital(uint16_t physical_buttons) {
 }
 
 // Update remapped_buttons based on a physical button and its mapping
-void remap(uint16_t physical_buttons, uint16_t &remapped_buttons,
+void remap(uint16_t &remapped_buttons, uint16_t physical_buttons,
            uint8_t to_remap, uint8_t mapping) {
     uint16_t mask = ~(1 << mapping);
     bool pressed = (physical_buttons & (1 << to_remap)) != 0;
@@ -248,28 +249,28 @@ void analog_main() {
 void read_triggers() {
     controller_configuration &config = controller_configuration::get_instance();
 
-    uint8_t lt;
-    uint8_t rt;
+    uint8_t lt, rt;
 
     get_triggers(lt, rt);
 
-    apply_trigger_mode_analog(state.l_trigger, lt,
-                              config.l_trigger_threshold_value(),
-                              state.buttons & (1 << LT_DIGITAL) != 0,
-                              config.mapping(LT_DIGITAL) == LT_DIGITAL,
-                              config.l_trigger_mode(), config.r_trigger_mode());
-    apply_trigger_mode_analog(state.r_trigger, rt,
-                              config.r_trigger_threshold_value(),
-                              state.buttons & (1 << RT_DIGITAL) != 0,
-                              config.mapping(RT_DIGITAL) == RT_DIGITAL,
-                              config.r_trigger_mode(), config.l_trigger_mode());
+    state.l_trigger = apply_trigger_mode_analog(
+        lt, config.l_trigger_threshold_value(),
+        state.lt_pressed,
+        config.mapping(LT_DIGITAL) == LT_DIGITAL, config.l_trigger_mode(),
+        config.r_trigger_mode());
+    state.r_trigger = apply_trigger_mode_analog(
+        rt, config.r_trigger_threshold_value(),
+        state.rt_pressed,
+        config.mapping(RT_DIGITAL) == RT_DIGITAL, config.r_trigger_mode(),
+        config.l_trigger_mode());
 }
 
 // Modify analog value based on the trigger mode
-void apply_trigger_mode_analog(uint8_t &out, uint8_t analog_value,
-                               uint8_t threshold_value, bool digital_value,
-                               bool enable_analog, trigger_mode mode,
-                               trigger_mode other_mode) {
+uint8_t apply_trigger_mode_analog(uint8_t analog_value, uint8_t threshold_value,
+                                  bool digital_value, bool enable_analog,
+                                  trigger_mode mode, trigger_mode other_mode) {
+    uint8_t out = 0;
+
     // Prevent accidental trigger-tricking
     if (analog_value <= TRIGGER_TRICK_THRESHOLD) {
         analog_value = 0;
@@ -316,13 +317,35 @@ void apply_trigger_mode_analog(uint8_t &out, uint8_t analog_value,
             }
             break;
     }
+
+    return out;
 }
 
 void read_sticks() {
-    double lx;
-    double ly;
-    double rx;
-    double ry;
+    controller_configuration &config = controller_configuration::get_instance();
 
-    get_sticks(lx, ly, rx, ry, SAMPLES_PER_READ);
+    double lx, ly, rx, ry;
+
+    get_sticks(lx, ly, rx, ry, SAMPLE_DURATION);
+
+    state.l_stick = linearize_stick(lx, ly, config.l_stick_coefficients);
+    // printf("%lf\n", lx);
+    // printf("%u\n", state.l_stick.x);
+    state.r_stick = linearize_stick(rx, ry, config.r_stick_coefficients);
+}
+
+stick linearize_stick(double x_raw, double y_raw,
+                      stick_coefficients coefficients) {
+    stick ret;
+
+    ret.x = round(coefficients.x_coefficients[0] +
+                  (coefficients.x_coefficients[1] * x_raw) +
+                  (coefficients.x_coefficients[2] * x_raw * x_raw) +
+                  (coefficients.x_coefficients[3] * x_raw * x_raw * x_raw));
+    ret.y = round(coefficients.y_coefficients[0] +
+                  (coefficients.y_coefficients[1] * y_raw) +
+                  (coefficients.y_coefficients[2] * y_raw * y_raw) +
+                  (coefficients.y_coefficients[3] * y_raw * y_raw * y_raw));
+
+    return ret;
 }

@@ -169,6 +169,9 @@ void controller_configuration::swap_mappings() {
         // Wait for buttons to be released if they haven't been
         if (!buttons_released) {
             buttons_released = physical_buttons == 0;
+            if (buttons_released) {
+                busy_wait_ms(DEBOUNCE_TIME);
+            }
             continue;
         }
 
@@ -181,6 +184,30 @@ void controller_configuration::swap_mappings() {
                    (physical_buttons & (physical_buttons - 1)) == 0) {
             // Wait for second single button press
             second_button = physical_buttons;
+            buttons_released = false;
+
+            // If the second button is the same as the first, let it be held for
+            // 3 seconds to quit, otherwise discard it
+            if (second_button == first_button) {
+                absolute_time_t timeout_at = make_timeout_time_ms(3000);
+                // Ensure button is held for 3 seconds
+                while (absolute_time_diff_us(timeout_at, get_absolute_time()) <
+                       0) {
+                    get_buttons(physical_buttons);
+                    if (physical_buttons != second_button) {
+                        second_button = 0;
+                        break;
+                    }
+                }
+
+                // If second button was held, exit
+                if (second_button != 0) {
+                    state.display_alert();
+                    return;
+                }
+
+                continue;
+            }
 
             // Once both buttons are selected, swap
             // Get first button's mapping
@@ -220,8 +247,6 @@ void controller_configuration::configure_triggers() {
     state.r_trigger = 0;
 
     // Initialize variables
-    uint32_t last_combo = 0;
-    uint32_t same_combo_count = 0;
     bool buttons_released = false;
 
     while (true) {
@@ -231,12 +256,7 @@ void controller_configuration::configure_triggers() {
         state.buttons =
             physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
 
-        // Wait for buttons to be released if they haven't been
-        if (!buttons_released) {
-            buttons_released = physical_buttons == 0;
-            continue;
-        }
-
+        // Quit if combo is pressed
         if (physical_buttons == ((1 << START) | (1 << X) | (1 << Z))) {
             persist();
             multicore_lockout_end_blocking();
@@ -244,67 +264,72 @@ void controller_configuration::configure_triggers() {
             return;
         }
 
+        // Wait for buttons to be released if they haven't been
+        if (!buttons_released) {
+            buttons_released = (physical_buttons &
+                                ~((1 << LT_DIGITAL) | (1 << RT_DIGITAL))) == 0;
+            if (buttons_released) {
+                busy_wait_ms(DEBOUNCE_TIME);
+            }
+            continue;
+        }
+
         // Mask out non-trigger buttons
         uint32_t trigger_pressed =
             physical_buttons & ((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
+
+        // If a combo might be pressed mark buttons as unreleased
+        if (trigger_pressed != 0 &&
+            (physical_buttons &
+             ((1 << A) | (1 << B) | (1 << DPAD_UP) | (1 << DPAD_RIGHT) |
+              (1 << DPAD_DOWN) | (1 << DPAD_LEFT))) != 0) {
+            buttons_released = false;
+        }
+
         if (trigger_pressed != 0 &&
             (trigger_pressed & (trigger_pressed - 1)) == 0) {
             // If only one trigger is pressed, set it to modify
             trigger_mode *mode;
-            uint8_t *offset;
+            uint8_t *threshold;
             if (trigger_pressed == (1 << LT_DIGITAL)) {
                 mode = &(profiles[current_profile].l_trigger_mode);
-                offset = &(profiles[current_profile].l_trigger_threshold_value);
+                threshold =
+                    &(profiles[current_profile].l_trigger_threshold_value);
             } else if (trigger_pressed == (1 << RT_DIGITAL)) {
                 mode = &(profiles[current_profile].r_trigger_mode);
-                offset = &(profiles[current_profile].r_trigger_threshold_value);
+                threshold =
+                    &(profiles[current_profile].r_trigger_threshold_value);
             }
 
             // Mask out trigger buttons
             uint32_t combo =
                 physical_buttons & ~((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
-            if (combo != 0 && combo == last_combo) {
-                // If the same buttons are pressed, increment count
-                ++same_combo_count;
 
-                // Throttle for 500ms initially, then 200ms
-                busy_wait_ms(same_combo_count > 1 ? 200 : 500);
-            } else {
-                // Otherwise reset count
-                same_combo_count = 0;
-            }
-
-            // Set last combo to current combo
-            last_combo = combo;
-
-            uint new_offset = *offset;
-            uint new_mode = *mode;
-            // Update mode/offset based on combo
+            int new_threshold = *threshold;
+            int new_mode = *mode;
+            // Update mode/threshold based on combo
             switch (combo) {
                 case (1 << A):
                     new_mode += 1U;
                     break;
                 case (1 << B):
                     new_mode -= 1U;
+                    break;
                 case (1 << DPAD_UP):
-                    new_offset += 1U;
+                    new_threshold += 1U;
                     break;
                 case (1 << DPAD_RIGHT):
-                    new_offset += 10U;
+                    new_threshold += 10U;
                     break;
                 case (1 << DPAD_DOWN):
-                    new_offset -= 1U;
+                    new_threshold -= 1U;
                     break;
                 case (1 << DPAD_LEFT):
-                    new_offset -= 10U;
-                    break;
-                default:
-                    // If no valid combo was pressed, reset combo counter
-                    last_combo = 0;
-                    same_combo_count = 0;
+                    new_threshold -= 10U;
                     break;
             }
 
+            // Wrap trigger mode
             if (new_mode < first_trigger_mode) {
                 *mode = last_trigger_mode;
             } else if (new_mode > last_trigger_mode) {
@@ -313,25 +338,24 @@ void controller_configuration::configure_triggers() {
                 *mode = static_cast<trigger_mode>(new_mode);
             }
 
-            if (new_offset < TRIGGER_THRESHOLD_MIN) {
-                *offset = (TRIGGER_THRESHOLD_MAX + 1) -
-                          (TRIGGER_THRESHOLD_MIN - new_offset);
-            } else if (new_offset > TRIGGER_THRESHOLD_MAX) {
-                *offset = (TRIGGER_THRESHOLD_MIN - 1) +
-                          (new_offset - TRIGGER_THRESHOLD_MAX);
+            // Wrap threshold
+            if (new_threshold < TRIGGER_THRESHOLD_MIN) {
+                *threshold = (TRIGGER_THRESHOLD_MAX + 1) -
+                             (TRIGGER_THRESHOLD_MIN - new_threshold);
+            } else if (new_threshold > TRIGGER_THRESHOLD_MAX) {
+                *threshold = (TRIGGER_THRESHOLD_MIN - 1) +
+                             (new_threshold - TRIGGER_THRESHOLD_MAX);
             } else {
-                *offset = new_offset;
+                *threshold = static_cast<uint8_t>(new_threshold);
             }
 
             // Display mode on left trigger & offset on right trigger
             state.l_trigger = *mode;
-            state.r_trigger = *offset;
+            state.r_trigger = *threshold;
         } else {
-            // Otherwise reset last combo and counter, and display nothing
+            // Otherwise display nothing
             state.l_trigger = 0;
             state.r_trigger = 0;
-            last_combo = 0;
-            same_combo_count = 0;
         }
     }
 }
@@ -339,11 +363,14 @@ void controller_configuration::configure_triggers() {
 void controller_configuration::calibrate_stick(
     stick_coefficients &to_calibrate, stick &display_stick,
     std::function<void(double &, double &, size_t)> get_stick) {
+    // Lock core 1 to prevent stick output from being displayed
+    multicore_lockout_start_blocking();
+
     // Initialize variables
     stick_calibration calibration(display_stick);
     bool buttons_released = false;
 
-    while (true) {
+    while (!calibration.done()) {
         // Show current step on display stick
         calibration.display_step();
 
@@ -356,29 +383,26 @@ void controller_configuration::calibrate_stick(
         // Wait for buttons to be released if they haven't been
         if (!buttons_released) {
             buttons_released = physical_buttons == 0;
+            if (buttons_released) {
+                busy_wait_ms(DEBOUNCE_TIME);
+            }
             continue;
         }
 
-        // If calibration is complete, generate coefficients and exit
-        if (calibration.done()) {
-            calibration.generate_coefficients(to_calibrate);
-            state.display_alert();
-            return;
-        }
-
-        // Wait for buttons to be released whenever some button is pressed
-        if (physical_buttons != 0) {
+        // Wait for buttons to be released whenever a combo is pressed
+        if ((physical_buttons & ((1 << B) | (1 << Z) | (1 << X))) != 0) {
             buttons_released = false;
         }
 
+        // Handle combos
         switch (physical_buttons) {
             case (1 << B):
                 calibration.undo_measurement();
                 break;
-            case (1 << A): {
+            case (1 << Z): {
                 double measured_x;
                 double measured_y;
-                get_stick(measured_x, measured_y, SAMPLES_PER_READ);
+                get_stick(measured_x, measured_y, SAMPLE_DURATION);
                 calibration.record_measurement(measured_x, measured_y);
                 break;
             }
@@ -387,6 +411,12 @@ void controller_configuration::calibrate_stick(
                 break;
         }
     }
+
+    to_calibrate = calibration.generate_coefficients();
+
+    persist();
+    multicore_lockout_end_blocking();
+    state.display_alert();
 }
 
 void controller_configuration::factory_reset() {

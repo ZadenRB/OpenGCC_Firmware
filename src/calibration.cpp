@@ -34,26 +34,32 @@ void stick_calibration::undo_measurement() {
     measured_x_coordinates.pop_back();
     measured_y_coordinates.pop_back();
     skipped_steps.pop_back();
-    --current_step;
+    if (current_step > 0) {
+        --current_step;
+    }
 }
 
 void stick_calibration::record_measurement(double x, double y) {
     measured_x_coordinates.push_back(x);
     measured_y_coordinates.push_back(y);
     skipped_steps.push_back(false);
-    ++current_step;
+    if (current_step < num_steps) {
+        ++current_step;
+    }
 }
 
 void stick_calibration::skip_measurement() {
     measured_x_coordinates.push_back(0);
     measured_y_coordinates.push_back(0);
     skipped_steps.push_back(true);
-    ++current_step;
+    if (current_step < num_steps) {
+        ++current_step;
+    }
 }
 
 void stick_calibration::remove_skipped_coordinates(
     std::vector<double> &coordinates) {
-    for (size_t i = coordinates.size(); i >= 0; --i) {
+    for (int i = coordinates.size(); i >= 0; --i) {
         if (skipped_steps[i]) {
             coordinates[i] = coordinates.back();
             coordinates.pop_back();
@@ -61,16 +67,20 @@ void stick_calibration::remove_skipped_coordinates(
     }
 }
 
-void stick_calibration::generate_coefficients(stick_coefficients &out) {
+stick_coefficients stick_calibration::generate_coefficients() {
+    stick_coefficients ret;
+
     remove_skipped_coordinates(measured_x_coordinates);
     remove_skipped_coordinates(expected_x_coordinates);
     remove_skipped_coordinates(measured_y_coordinates);
     remove_skipped_coordinates(expected_y_coordinates);
 
-    fit_curve(out.x_coefficients, measured_x_coordinates,
-              expected_x_coordinates);
-    fit_curve(out.y_coefficients, measured_y_coordinates,
-              expected_y_coordinates);
+    ret.x_coefficients = fit_curve<NUM_COEFFICIENTS>(measured_x_coordinates,
+                                                     expected_x_coordinates);
+    ret.y_coefficients = fit_curve<NUM_COEFFICIENTS>(measured_y_coordinates,
+                                                     expected_y_coordinates);
+
+    return ret;
 }
 
 bool stick_calibration::done() { return current_step == num_steps; }

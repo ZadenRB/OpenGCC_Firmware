@@ -29,10 +29,8 @@
  * persist between power cycles.
  */
 
-/** \brief Number of samples to collect from sensors and average before updating
- * state
- */
-constexpr uint SAMPLES_PER_READ = 1000;
+/// \brief Number of microseconds to sample sensors for before updating state
+constexpr uint SAMPLE_DURATION = 1000;
 
 /** \brief Threshold below which trigger will report 0 to prevent
  * trigger-tricking
@@ -51,6 +49,10 @@ struct stick {
 struct controller_state {
     /// \brief State of digital inputs
     uint16_t buttons = 0;
+    /// \brief Whether left trigger digital is pressed (post remap)
+    bool lt_pressed = false;
+    /// \brief Whether right trigger digital is pressed (post remap)
+    bool rt_pressed = false;
     /// \brief State of left stick
     stick l_stick;
     /// \brief State of right stick

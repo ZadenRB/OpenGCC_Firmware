@@ -28,7 +28,7 @@ alignas(16) std::array<uint32_t, 2> ly_raw;
 alignas(16) std::array<uint32_t, 2> rx_raw;
 alignas(16) std::array<uint32_t, 2> ry_raw;
 
-alignas(16) std::array<uint8_t, 2> triggers_raw = {0};
+alignas(16) std::array<uint8_t, 2> triggers_raw;
 
 void init_buttons() {
     gpio_pull_up(DPAD_LEFT);
@@ -205,7 +205,7 @@ void init_triggers() {
 }
 
 void get_sticks(double &lx_out, double &ly_out, double &rx_out, double &ry_out,
-                size_t num_samples) {
+                uint sample_for_us) {
     double lx_high = 0;
     double lx_low = 0;
     double ly_high = 0;
@@ -214,15 +214,19 @@ void get_sticks(double &lx_out, double &ly_out, double &rx_out, double &ry_out,
     double rx_low = 0;
     double ry_high = 0;
     double ry_low = 0;
-    for (size_t i = 0; i < num_samples; ++i) {
+    uint num_samples = 0;
+    absolute_time_t timeout_at = make_timeout_time_us(sample_for_us);
+
+    while (absolute_time_diff_us(timeout_at, get_absolute_time()) < 0) {
         lx_high += lx_raw[0];
         lx_low += lx_raw[1];
         ly_high += ly_raw[0];
         ly_low += ly_raw[1];
-        rx_high += lx_raw[0];
-        rx_low += lx_raw[1];
-        ry_high += ly_raw[0];
-        ry_low += ly_raw[1];
+        rx_high += rx_raw[0];
+        rx_low += rx_raw[1];
+        ry_high += ry_raw[0];
+        ry_low += ry_raw[1];
+        ++num_samples;
     }
 
     // Add correction factors

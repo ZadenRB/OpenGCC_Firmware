@@ -31,6 +31,7 @@ alignas(16) std::array<uint32_t, 2> ry_raw;
 alignas(16) std::array<uint8_t, 2> triggers_raw;
 
 void init_buttons() {
+    // Set buttons as pull-up inputs
     gpio_pull_up(DPAD_LEFT);
     gpio_pull_up(DPAD_RIGHT);
     gpio_pull_up(DPAD_DOWN);
@@ -44,16 +45,18 @@ void init_buttons() {
     gpio_pull_up(Y);
     gpio_pull_up(START);
 
-    // Wait for pull ups to stabilize
+    // Wait for pull-ups to stabilize
     busy_wait_us(100);
 }
 
-void get_buttons(uint16_t &out) {
-    out = ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
+uint16_t get_buttons() {
+    // Get all pins and invert values (pulled down means pressed), bitwise and
+    // with mask to only include buttons
+    return ~gpio_get_all() & PHYSICAL_BUTTONS_MASK;
 }
 
 void init_sticks() {
-    // Set PWM inputs as pull up
+    // Set PWM inputs as pull-up
     gpio_pull_up(LX);
     gpio_pull_up(LY);
     gpio_pull_up(RX);
@@ -156,6 +159,7 @@ void init_sticks() {
                           &pwm_pio->rxf[ry_sm], 0xFFFFFFFD,
                           false);  // Configure but don't start RY DMA 2
 
+    // Start Joybus PIO state machines
     read_pwm_program_init(pwm_pio, lx_sm, read_pwm_offset, LX);
     read_pwm_program_init(pwm_pio, ly_sm, read_pwm_offset, LY);
     read_pwm_program_init(pwm_pio, rx_sm, read_pwm_offset, RX);
@@ -217,6 +221,7 @@ void get_sticks(double &lx_out, double &ly_out, double &rx_out, double &ry_out,
     uint num_samples = 0;
     absolute_time_t timeout_at = make_timeout_time_us(sample_for_us);
 
+    // Collect inputs for sample_for_us microseconds
     while (absolute_time_diff_us(timeout_at, get_absolute_time()) < 0) {
         lx_high += lx_raw[0];
         lx_low += lx_raw[1];
@@ -239,23 +244,28 @@ void get_sticks(double &lx_out, double &ly_out, double &rx_out, double &ry_out,
     ry_high += PWM_HIGH_CORRECTION * num_samples;
     ry_low += PWM_LOW_CORRECTION * num_samples;
 
-    // Output
+    // Set outputs to average
     lx_out = lx_high / (lx_high + lx_low);
     ly_out = ly_high / (ly_high + ly_low);
     rx_out = rx_high / (rx_high + rx_low);
     ry_out = ry_high / (ry_high + ry_low);
 }
 
-void get_left_stick(double &x_out, double &y_out, size_t num_samples) {
+void get_left_stick(double &x_out, double &y_out, uint sample_for_us) {
     double x_high = 0;
     double x_low = 0;
     double y_high = 0;
     double y_low = 0;
-    for (size_t i = 0; i < num_samples; ++i) {
+    uint num_samples = 0;
+    absolute_time_t timeout_at = make_timeout_time_us(sample_for_us);
+
+    // Collect inputs for sample_for_us microseconds
+    while (absolute_time_diff_us(timeout_at, get_absolute_time()) < 0) {
         x_high += lx_raw[0];
         x_low += lx_raw[1];
         y_high += ly_raw[0];
         y_low += ly_raw[1];
+        ++num_samples;
     }
 
     // Add correction factors
@@ -264,21 +274,26 @@ void get_left_stick(double &x_out, double &y_out, size_t num_samples) {
     y_high += PWM_HIGH_CORRECTION * num_samples;
     y_low += PWM_LOW_CORRECTION * num_samples;
 
-    // Output
+    // Set outputs to average
     x_out = x_high / (x_high + x_low);
     y_out = y_high / (y_high + y_low);
 }
 
-void get_right_stick(double &x_out, double &y_out, size_t num_samples) {
+void get_right_stick(double &x_out, double &y_out, uint sample_for_us) {
     double x_high = 0;
     double x_low = 0;
     double y_high = 0;
     double y_low = 0;
-    for (size_t i = 0; i < num_samples; ++i) {
+    uint num_samples = 0;
+    absolute_time_t timeout_at = make_timeout_time_us(sample_for_us);
+
+    // Collect inputs for sample_for_us microseconds
+    while (absolute_time_diff_us(timeout_at, get_absolute_time()) < 0) {
         x_high += rx_raw[0];
         x_low += rx_raw[1];
         y_high += ry_raw[0];
         y_low += ry_raw[1];
+        ++num_samples;
     }
 
     // Add correction factors
@@ -287,7 +302,7 @@ void get_right_stick(double &x_out, double &y_out, size_t num_samples) {
     y_high += PWM_HIGH_CORRECTION * num_samples;
     y_low += PWM_LOW_CORRECTION * num_samples;
 
-    // Output
+    // Set outputs to average
     x_out = x_high / (x_high + x_low);
     y_out = y_high / (y_high + y_low);
 }

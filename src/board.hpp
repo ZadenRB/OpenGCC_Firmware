@@ -112,8 +112,11 @@ constexpr uint32_t INTERCORE_SIGNAL = 0x623F16E4;
 /// \brief Initialize button reading functionality
 void init_buttons();
 
-/// \brief Get physical button states in the order they are sent to the console
-void get_buttons(uint16_t &out);
+/** \brief Get physical button states in the order they are sent to the console
+ * 
+ * \return Bitset of button states
+ */
+uint16_t get_buttons();
 
 /// \brief Initialize stick reading functionality
 void init_sticks();
@@ -131,19 +134,19 @@ void get_sticks(double &lx_out, double &ly_out, double &rx_out, double &ry_out,
 
 /** \brief Get the value of the left stick
  *
- * \param x_out Output for x-axis
- * \param y_out Output for y-axis
- * \param num_samples Number of samples to average for the stick values
+ * \param x_out Output for left stick x-axis
+ * \param y_out Output for left stick y-axis
+ * \param sample_for_us Number of microseconds to sample for
  */
-void get_left_stick(double &x_out, double &y_out, size_t num_samples);
+void get_left_stick(double &x_out, double &y_out, uint sample_for_us);
 
 /** \brief Get the value of the right stick
  *
- * \param x_out Output for x-axis
- * \param y_out Output for y-axis
- * \param num_samples Number of samples to average for the stick values
+ * \param x_out Output for right stick x-axis
+ * \param y_out Output for right stick y-axis
+ * \param sample_for_us Number of microseconds to sample for
  */
-void get_right_stick(double &x_out, double &y_out, size_t num_samples);
+void get_right_stick(double &x_out, double &y_out, uint sample_for_us);
 
 /// \brief Initialize trigger reading functionality
 void init_triggers();

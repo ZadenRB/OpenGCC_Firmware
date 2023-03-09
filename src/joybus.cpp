@@ -80,8 +80,8 @@ void joybus_init(PIO pio, uint data_pin) {
 void handle_console_request() {
     uint32_t cmd = pio_sm_get(joybus_pio, joybus_rx_sm);
 
+    // Determine request length based on command
     int request_len;
-
     switch (cmd) {
         case 0x40:
         case 0x42:
@@ -96,6 +96,7 @@ void handle_console_request() {
             break;
     }
 
+    // Collect the rest of the console request
     std::array<uint8_t, 4> request;
     for (std::size_t i = 0; i < request_len; ++i) {
         // Wait a max of 48us for a new item to be pushed into the RX FIFO,
@@ -112,11 +113,12 @@ void handle_console_request() {
         request[i] = pio_sm_get(joybus_pio, joybus_rx_sm);
     }
 
-    // Move to code to process stop bit
+    // Make state machine process stop bit
     pio_sm_exec(
         joybus_pio, joybus_rx_sm,
         pio_encode_jmp(joybus_rx_offset + joybus_rx_offset_read_stop_bit));
 
+    // Set & send response
     switch (cmd) {
         case 0xFF:
         case 0x00: {
@@ -178,6 +180,7 @@ void send_data(uint32_t length) {
 }
 
 void send_mode(uint8_t mode) {
+    // Fill tx_buf based on mode and initiate send
     switch (mode) {
         case 0x00:
             tx_buf[0] = state.buttons >> 8;

@@ -54,6 +54,7 @@ controller_configuration::controller_configuration() {
         }
         current_profile = 0;
 
+        // Set coefficients to zero
         l_stick_coefficients.x_coefficients = {0, 0, 0, 0};
         l_stick_coefficients.y_coefficients = {0, 0, 0, 0};
         r_stick_coefficients.x_coefficients = {0, 0, 0, 0};
@@ -109,8 +110,10 @@ void controller_configuration::persist() {
         flash_range_erase(CONFIG_FLASH_BASE, FLASH_SECTOR_SIZE);
     }
 
+    // Get current configuration as bytes
     uint8_t *config_bytes = reinterpret_cast<uint8_t *>(this);
     std::array<uint8_t, FLASH_PAGE_SIZE> buf = {0};
+    // Fill buffer with the configuration bytes and pad with 0xFF
     for (std::size_t i = 0; i < FLASH_PAGE_SIZE; ++i) {
         if (i < CONFIG_SIZE) {
             buf[i] = config_bytes[i];
@@ -119,12 +122,9 @@ void controller_configuration::persist() {
         }
     }
 
+    // Write to flash
     flash_range_program(CONFIG_FLASH_BASE + (w_page * FLASH_PAGE_SIZE),
                         buf.data(), FLASH_PAGE_SIZE);
-}
-
-std::array<uint8_t, 13> controller_configuration::mappings() {
-    return profiles[current_profile].mappings;
 }
 
 uint8_t controller_configuration::mapping(size_t index) {
@@ -153,15 +153,13 @@ void controller_configuration::select_profile(size_t profile) {
 }
 
 void controller_configuration::swap_mappings() {
-    // Initialize variables
     bool buttons_released = false;
     uint32_t first_button = 0;
     uint32_t second_button = 0;
 
     while (true) {
         // Get buttons
-        uint16_t physical_buttons;
-        get_buttons(physical_buttons);
+        uint16_t physical_buttons = get_buttons();
 
         state.buttons =
             physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
@@ -193,7 +191,7 @@ void controller_configuration::swap_mappings() {
                 // Ensure button is held for 3 seconds
                 while (absolute_time_diff_us(timeout_at, get_absolute_time()) <
                        0) {
-                    get_buttons(physical_buttons);
+                    physical_buttons = get_buttons();
                     if (physical_buttons != second_button) {
                         second_button = 0;
                         break;
@@ -246,13 +244,11 @@ void controller_configuration::configure_triggers() {
     state.l_trigger = 0;
     state.r_trigger = 0;
 
-    // Initialize variables
     bool buttons_released = false;
 
     while (true) {
         // Get buttons
-        uint16_t physical_buttons;
-        get_buttons(physical_buttons);
+        uint16_t physical_buttons = get_buttons();
         state.buttons =
             physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
 
@@ -288,7 +284,7 @@ void controller_configuration::configure_triggers() {
 
         if (trigger_pressed != 0 &&
             (trigger_pressed & (trigger_pressed - 1)) == 0) {
-            // If only one trigger is pressed, set it to modify
+            // If only one trigger is pressed, set it as the one to modify
             trigger_mode *mode;
             uint8_t *threshold;
             if (trigger_pressed == (1 << LT_DIGITAL)) {
@@ -366,7 +362,6 @@ void controller_configuration::calibrate_stick(
     // Lock core 1 to prevent stick output from being displayed
     multicore_lockout_start_blocking();
 
-    // Initialize variables
     stick_calibration calibration(display_stick);
     bool buttons_released = false;
 
@@ -375,8 +370,7 @@ void controller_configuration::calibrate_stick(
         calibration.display_step();
 
         // Get buttons
-        uint16_t physical_buttons;
-        get_buttons(physical_buttons);
+        uint16_t physical_buttons = get_buttons();
         state.buttons =
             physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
 

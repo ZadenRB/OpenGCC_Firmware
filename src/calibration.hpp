@@ -87,7 +87,10 @@ class stick_calibration {
     /// \brief Skip the current calibration step
     void skip_measurement();
 
-    /// \brief Is calibration done
+    /** \brief Determine if calibration is complete
+     * 
+     * \return True if calibration is complete, otherwise false
+     */
     bool done();
 
     /**

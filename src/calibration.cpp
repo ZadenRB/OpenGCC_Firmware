@@ -26,33 +26,34 @@ stick_calibration::stick_calibration(stick &display) : display_stick(display) {
 }
 
 void stick_calibration::display_step() {
+    // Set display stick to expected x & y for current calibration step
     display_stick.x = expected_x_coordinates[current_step];
     display_stick.y = expected_y_coordinates[current_step];
 }
 
-void stick_calibration::undo_measurement() {
-    measured_x_coordinates.pop_back();
-    measured_y_coordinates.pop_back();
-    skipped_steps.pop_back();
+void stick_calibration::undo_measurement() { 
     if (current_step > 0) {
+        measured_x_coordinates.pop_back();
+        measured_y_coordinates.pop_back();
+        skipped_steps.pop_back();
         --current_step;
     }
 }
 
 void stick_calibration::record_measurement(double x, double y) {
-    measured_x_coordinates.push_back(x);
-    measured_y_coordinates.push_back(y);
-    skipped_steps.push_back(false);
     if (current_step < num_steps) {
+        measured_x_coordinates.push_back(x);
+        measured_y_coordinates.push_back(y);
+        skipped_steps.push_back(false);
         ++current_step;
     }
 }
 
 void stick_calibration::skip_measurement() {
-    measured_x_coordinates.push_back(0);
-    measured_y_coordinates.push_back(0);
-    skipped_steps.push_back(true);
     if (current_step < num_steps) {
+        measured_x_coordinates.push_back(0);
+        measured_y_coordinates.push_back(0);
+        skipped_steps.push_back(true);
         ++current_step;
     }
 }

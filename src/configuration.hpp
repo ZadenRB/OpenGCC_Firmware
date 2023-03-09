@@ -30,6 +30,7 @@
  *
  * Controller settings that persist between controller reboots. Handles
  * loading, modifying, and persisting the settings. This includes:
+ * * Controller profiles
  * * Button mappings
  * * Trigger modes
  * * Calibration
@@ -121,7 +122,8 @@ class controller_configuration {
     stick_coefficients r_stick_coefficients;
 
     /** \brief Get the configuration instance
-     * \return controller_configuration&
+     *
+     * \return The controller's configuration
      */
     static controller_configuration &get_instance();
 
@@ -141,22 +143,36 @@ class controller_configuration {
     /// \brief Persist the current configuration to flash
     void persist();
 
-    /// \brief Mappings for current profile
-    std::array<uint8_t, 13> mappings();
-
-    /// \brief Mapping by index for current profile
+    /** \brief Get a mapping by index for current profile
+     *
+     * \param index index of mapping to get
+     *
+     * \return Mapping for given index in the current profile
+     */
     uint8_t mapping(size_t index);
 
-    /// \brief Left trigger mode for current profile
+    /** \brief Left trigger mode for current profile
+     *
+     * \return The left trigger mode
+     */
     trigger_mode l_trigger_mode();
 
-    /// \brief Left trigger mode for current profile
+    /** \brief Left trigger threshold value for current profile
+     *
+     * \return The left trigger threshold value
+     */
     uint8_t l_trigger_threshold_value();
 
-    /// \brief Right trigger mode for current profile
+    /** \brief Right trigger mode for current profile
+     *
+     * \return The right trigger mode
+     */
     trigger_mode r_trigger_mode();
 
-    /// \brief Right trigger mode for current profile
+    /** \brief Right trigger threshold value for current profile
+     *
+     * \return The right trigger threshold value
+     */
     uint8_t r_trigger_threshold_value();
 
     /// \brief Set the current profile to the given one
@@ -171,8 +187,8 @@ class controller_configuration {
     /** \brief Enter stick configuration mode
      *
      * \param to_calibrate Output for coefficients
-     * \param display_stick Stick to display calibration step to
-     * \param get_stick Function to get stick
+     * \param display_stick Stick to display calibration (stick not being
+     * calibrated) \param get_stick Function to get stick
      */
     void calibrate_stick(
         stick_coefficients &to_calibrate, stick &display_stick,
@@ -186,7 +202,7 @@ class controller_configuration {
 constexpr uint32_t CONFIG_FLASH_BASE =
     PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE;
 
-/// \brief Memory address of first possible configuration
+/// \brief Memory-mapped address of first possible configuration
 constexpr uint32_t CONFIG_SRAM_BASE =
     XIP_NOCACHE_NOALLOC_BASE + CONFIG_FLASH_BASE;
 
@@ -200,7 +216,7 @@ constexpr uint32_t LAST_PAGE = PAGES_PER_SECTOR - 1;
 constexpr size_t CONFIG_SIZE = sizeof(controller_configuration);
 
 /** \brief How many milliseconds to debounce on button releases to prevent
- * douvble presses when calibrating
+ * double presses when configuring
  */
 constexpr uint DEBOUNCE_TIME = 50;
 #endif  // CONFIGURATION_H_

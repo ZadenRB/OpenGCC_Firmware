@@ -58,8 +58,7 @@ int main() {
     controller_configuration &config = controller_configuration::get_instance();
 
     // Now that we have a configuration, select a profile if combo is held
-    uint16_t startup_buttons;
-    get_buttons(startup_buttons);
+    uint16_t startup_buttons = get_buttons();
     switch (startup_buttons) {
         case (1 << START) | (1 << A):
             config.select_profile(0);
@@ -70,8 +69,7 @@ int main() {
     }
 
     // Read buttons once before starting communication
-    uint16_t physical_buttons;
-    get_buttons(physical_buttons);
+    uint16_t physical_buttons = get_buttons();
     read_digital(physical_buttons);
 
     // printf("Equation: %lf + %lfx + %lfx^2 + %lfx^3\n",
@@ -84,7 +82,7 @@ int main() {
     joybus_init(pio0, DATA);
 
     while (true) {
-        get_buttons(physical_buttons);
+        physical_buttons = get_buttons();
         read_digital(physical_buttons);
         check_combos(physical_buttons);
     }
@@ -92,7 +90,6 @@ int main() {
     return 0;
 }
 
-// Read buttons
 void read_digital(uint16_t physical_buttons) {
     controller_configuration &config = controller_configuration::get_instance();
 
@@ -128,7 +125,6 @@ void read_digital(uint16_t physical_buttons) {
     state.buttons = remapped_buttons;
 }
 
-// Update remapped_buttons based on a physical button and its mapping
 void remap(uint16_t &remapped_buttons, uint16_t physical_buttons,
            uint8_t to_remap, uint8_t mapping) {
     uint16_t mask = ~(1 << mapping);
@@ -136,7 +132,6 @@ void remap(uint16_t &remapped_buttons, uint16_t physical_buttons,
     remapped_buttons = (remapped_buttons & mask) | (pressed << mapping);
 }
 
-// Modify digital value based on the trigger mode
 void apply_trigger_mode_digital(uint16_t &buttons, uint8_t bit_to_set,
                                 trigger_mode mode, trigger_mode other_mode) {
     switch (mode) {
@@ -154,7 +149,6 @@ void apply_trigger_mode_digital(uint16_t &buttons, uint8_t bit_to_set,
     }
 }
 
-// Check if any button combos are being pressed
 void check_combos(uint32_t physical_buttons) {
     // Check if the active combo is still being pressed
     if (state.active_combo != 0) {
@@ -192,12 +186,12 @@ void check_combos(uint32_t physical_buttons) {
     }
 }
 
-// Run the handler function for a combo
 void execute_combo() {
     controller_configuration &config = controller_configuration::get_instance();
 
     state.display_alert();
 
+    // Call appropriate function for combo
     switch (state.active_combo) {
         case (1 << START) | (1 << Y) | (1 << A) | (1 << Z):
             state.toggle_safe_mode();
@@ -245,14 +239,15 @@ void analog_main() {
     }
 }
 
-// Read analog triggers & apply analog trigger modes
 void read_triggers() {
     controller_configuration &config = controller_configuration::get_instance();
 
     uint8_t lt, rt;
 
+    // Read trigger values
     get_triggers(lt, rt);
 
+    // Apply analog trigger modes
     state.l_trigger = apply_trigger_mode_analog(
         lt, config.l_trigger_threshold_value(),
         state.lt_pressed,
@@ -265,7 +260,6 @@ void read_triggers() {
         config.l_trigger_mode());
 }
 
-// Modify analog value based on the trigger mode
 uint8_t apply_trigger_mode_analog(uint8_t analog_value, uint8_t threshold_value,
                                   bool digital_value, bool enable_analog,
                                   trigger_mode mode, trigger_mode other_mode) {
@@ -326,8 +320,10 @@ void read_sticks() {
 
     double lx, ly, rx, ry;
 
+    // Read sticks
     get_sticks(lx, ly, rx, ry, SAMPLE_DURATION);
 
+    // Linearize values
     state.l_stick = linearize_stick(lx, ly, config.l_stick_coefficients);
     // printf("%lf\n", lx);
     // printf("%u\n", state.l_stick.x);
@@ -338,6 +334,7 @@ stick linearize_stick(double x_raw, double y_raw,
                       stick_coefficients coefficients) {
     stick ret;
 
+    // Linearize x & y
     ret.x = round(coefficients.x_coefficients[0] +
                   (coefficients.x_coefficients[1] * x_raw) +
                   (coefficients.x_coefficients[2] * x_raw * x_raw) +

@@ -32,5 +32,4 @@ void controller_state::display_alert() {
 
 void controller_state::toggle_safe_mode() {
     this->safe_mode = !this->safe_mode;
-    this->display_alert();
 }

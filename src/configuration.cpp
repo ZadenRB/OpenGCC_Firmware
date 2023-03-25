@@ -417,5 +417,4 @@ void controller_configuration::factory_reset() {
     flash_range_erase(CONFIG_FLASH_BASE, FLASH_SECTOR_SIZE);
     reload_instance();
     state = controller_state();
-    state.display_alert();
 }

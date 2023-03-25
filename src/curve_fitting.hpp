@@ -131,8 +131,8 @@ std::array<double, NCoefficients> fit_curve(
             sum += raised_measured_coordinate;
         }
 
-        std::size_t current_col = i;
-        std::size_t current_row = 0;
+        int current_col = i;
+        int current_row = 0;
         if (current_col > NCoefficients - 1) {
             current_col = NCoefficients - 1;
             current_row = i - current_col;

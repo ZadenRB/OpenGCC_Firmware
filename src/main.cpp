@@ -18,8 +18,6 @@
 
 #include "main.hpp"
 
-// #include <stdio.h>
-
 #include <cmath>
 
 #include "hardware/clocks.h"
@@ -36,20 +34,8 @@ int main() {
     // Configure system PLL to 128 MHZ
     set_sys_clock_pll(1536 * MHZ, 6, 2);
 
-    // stdio_init_all();
-
     // Launch analog on core 1
     multicore_launch_core1(analog_main);
-
-    // Wait for core 1 push to the intercore FIFO, signaling core 0 to proceed
-    //
-    // We don't use the SDK's multicore_lockout_* functions for this because
-    // it would be a race condition for core 1 to launch and interrupt core 0
-    // before core 0 enables the RX IRQ
-    uint32_t val = multicore_fifo_pop_blocking();
-    while (val != INTERCORE_SIGNAL) {
-        val = multicore_fifo_pop_blocking();
-    }
 
     // Setup buttons to be read
     init_buttons();
@@ -224,11 +210,9 @@ void analog_main() {
     init_sticks();
     init_triggers();
 
-    // Allow core 0 to continue (start responding to console polls) after
-    // reading analog inputs once
+    // Read analog inputs once
     read_triggers();
     read_sticks();
-    multicore_fifo_push_blocking(INTERCORE_SIGNAL);
 
     // Enable lockout
     multicore_lockout_victim_init();
@@ -249,13 +233,11 @@ void read_triggers() {
 
     // Apply analog trigger modes
     state.l_trigger = apply_trigger_mode_analog(
-        lt, config.l_trigger_threshold_value(),
-        state.lt_pressed,
+        lt, config.l_trigger_threshold_value(), state.lt_pressed,
         config.mapping(LT_DIGITAL) == LT_DIGITAL, config.l_trigger_mode(),
         config.r_trigger_mode());
     state.r_trigger = apply_trigger_mode_analog(
-        rt, config.r_trigger_threshold_value(),
-        state.rt_pressed,
+        rt, config.r_trigger_threshold_value(), state.rt_pressed,
         config.mapping(RT_DIGITAL) == RT_DIGITAL, config.r_trigger_mode(),
         config.l_trigger_mode());
 }
@@ -325,8 +307,6 @@ void read_sticks() {
 
     // Linearize values
     state.l_stick = linearize_stick(lx, ly, config.l_stick_coefficients);
-    // printf("%lf\n", lx);
-    // printf("%u\n", state.l_stick.x);
     state.r_stick = linearize_stick(rx, ry, config.r_stick_coefficients);
 }
 

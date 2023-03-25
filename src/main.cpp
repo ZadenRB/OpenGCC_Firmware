@@ -58,12 +58,6 @@ int main() {
     uint16_t physical_buttons = get_buttons();
     read_digital(physical_buttons);
 
-    // printf("Equation: %lf + %lfx + %lfx^2 + %lfx^3\n",
-    //        config.l_stick_coefficients.x_coefficients[0],
-    //        config.l_stick_coefficients.x_coefficients[1],
-    //        config.l_stick_coefficients.x_coefficients[2],
-    //        config.l_stick_coefficients.x_coefficients[3]);
-
     // Start console communication
     joybus_init(pio0, DATA);
 

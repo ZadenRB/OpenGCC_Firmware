@@ -20,10 +20,14 @@
 
 #include "curve_fitting.hpp"
 
-stick_calibration::stick_calibration(stick &display) : display_stick(display) {
-    current_step = 0;
-    num_steps = NUM_CALIBRATION_STEPS;
-}
+stick_calibration::stick_calibration(stick &display)
+    : current_step{0},
+      num_steps{NUM_CALIBRATION_STEPS},
+      display_stick(display),
+      expected_x_coordinates({127, 227, 127, 197, 127, 127, 127, 57, 127, 27,
+                              127, 57, 127, 127, 127, 197}),
+      expected_y_coordinates({127, 127, 127, 197, 127, 227, 127, 197, 127, 127,
+                              127, 57, 127, 27, 127, 57}) {}
 
 void stick_calibration::display_step() {
     // Set display stick to expected x & y for current calibration step
@@ -31,7 +35,7 @@ void stick_calibration::display_step() {
     display_stick.y = expected_y_coordinates[current_step];
 }
 
-void stick_calibration::undo_measurement() { 
+void stick_calibration::undo_measurement() {
     if (current_step > 0) {
         measured_x_coordinates.pop_back();
         measured_y_coordinates.pop_back();
@@ -60,7 +64,7 @@ void stick_calibration::skip_measurement() {
 
 void stick_calibration::remove_skipped_coordinates(
     std::vector<double> &coordinates) {
-    for (int i = coordinates.size(); i >= 0; --i) {
+    for (int i = coordinates.size() - 1; i >= 0; --i) {
         if (skipped_steps[i]) {
             coordinates[i] = coordinates.back();
             coordinates.pop_back();

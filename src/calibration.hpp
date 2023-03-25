@@ -37,35 +37,15 @@ class stick_calibration {
    private:
     size_t current_step;
     size_t num_steps;
-    // std::vector<double> expected_x_coordinates = {
-    //     127.5, 227.5,         127.5, 201.7462120246, 127.5, 127.5,
-    //     127.5, 53.2537879754, 127.5, 27.5,           127.5, 53.2537879754,
-    //     127.5, 127.5,         127.5, 201.7462120246};
-    // std::vector<double> expected_y_coordinates = {
-    //     127.5, 127.5,          127.5, 201.7462120246, 127.5, 227.5,
-    //     127.5, 201.7462120246, 127.5, 127.5,          127.5, 53.2537879754,
-    //     127.5, 27.5,           127.5, 53.2537879754};
-    // std::vector<double> expected_x_coordinates = {
-    //     127.5, 227.5,         127.5, 198.210678119, 127.5, 127.5,
-    //     127.5, 56.789321881, 127.5, 27.5,           127.5, 56.789321881,
-    //     127.5, 127.5,         127.5, 198.210678119};
-    // std::vector<double> expected_y_coordinates = {
-    //     127.5, 127.5,          127.5, 198.210678119, 127.5, 227.5,
-    //     127.5, 198.210678119, 127.5, 127.5,          127.5, 56.789321881,
-    //     127.5, 27.5,           127.5, 56.789321881};
-    std::vector<double> expected_x_coordinates = {127, 227, 127, 197, 127, 127,
-                                                  127, 57,  127, 27,  127, 57,
-                                                  127, 127, 127, 197};
-    std::vector<double> expected_y_coordinates = {127, 127, 127, 197, 127, 227,
-                                                  127, 197, 127, 127, 127, 57,
-                                                  127, 27,  127, 57};
+    std::vector<double> expected_x_coordinates;
+    std::vector<double> expected_y_coordinates;
     std::vector<double> measured_x_coordinates;
     std::vector<double> measured_y_coordinates;
     std::vector<bool> skipped_steps;
     stick &display_stick;
 
    public:
-    /** \brief Construct a new stick calibration object
+    /** \brief Construct the stick calibration object
      *
      * \param display The stick to display calibration steps on
      */

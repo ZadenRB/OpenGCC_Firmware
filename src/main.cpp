@@ -190,7 +190,7 @@ void execute_combo() {
             config.calibrate_stick(config.r_stick_coefficients, state.l_stick,
                                    get_right_stick);
             break;
-        case (1 << START) | (1 << Y) | (1 << Z):
+        case (1 << START) | (1 << Y) | (1 << B):
             controller_configuration::factory_reset();
             break;
     }

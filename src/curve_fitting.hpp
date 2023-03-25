@@ -112,11 +112,11 @@ std::array<std::array<double, N>, N> convert_to_inverse(
  * \return Coefficients to map measured to expected
  */
 template <std::size_t NCoefficients>
-std::array<double, NUM_COEFFICIENTS> fit_curve(
+std::array<double, NCoefficients> fit_curve(
     const std::vector<double>& measured_coordinates,
     const std::vector<double>& expected_coordinates) {
     assert(measured_coordinates.size() == expected_coordinates.size());
-    std::array<double, NUM_COEFFICIENTS> ret = {};
+    std::array<double, NCoefficients> ret = {};
     size_t num_coordinates = measured_coordinates.size();
 
     std::array<std::array<double, NCoefficients>, NCoefficients> a = {};

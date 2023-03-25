@@ -34,11 +34,10 @@ int main() {
     // Configure system PLL to 128 MHZ
     set_sys_clock_pll(1536 * MHZ, 6, 2);
 
-    // Launch analog on core 1
-    multicore_launch_core1(analog_main);
-
-    // Setup buttons to be read
+    // Setup buttons, sticks, and triggers to be read
     init_buttons();
+    init_sticks();
+    init_triggers();
 
     // Load configuration
     controller_configuration &config = controller_configuration::get_instance();
@@ -54,15 +53,19 @@ int main() {
             break;
     }
 
-    // Read buttons once before starting communication
-    uint16_t physical_buttons = get_buttons();
-    read_digital(physical_buttons);
+    // Read buttons, sticks, and triggers once before starting communication
+    read_digital(get_buttons());
+    read_triggers();
+    read_sticks();
 
     // Start console communication
     joybus_init(pio0, DATA);
 
+    // Launch analog on core 1
+    multicore_launch_core1(analog_main);
+
     while (true) {
-        physical_buttons = get_buttons();
+        uint16_t physical_buttons = get_buttons();
         read_digital(physical_buttons);
         check_combos(physical_buttons);
     }
@@ -200,14 +203,6 @@ void execute_combo() {
 }
 
 void analog_main() {
-    // Setup sticks and triggers to be read
-    init_sticks();
-    init_triggers();
-
-    // Read analog inputs once
-    read_triggers();
-    read_sticks();
-
     // Enable lockout
     multicore_lockout_victim_init();
 

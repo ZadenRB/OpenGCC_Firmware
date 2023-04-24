@@ -396,7 +396,7 @@ void controller_configuration::calibrate_stick(
             case (1 << Z): {
                 double measured_x;
                 double measured_y;
-                get_stick(measured_x, measured_y, SAMPLE_DURATION);
+                get_stick(measured_x, measured_y, 50000);
                 calibration.record_measurement(measured_x, measured_y);
                 break;
             }

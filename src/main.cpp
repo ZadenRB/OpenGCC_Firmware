@@ -19,6 +19,7 @@
 #include "main.hpp"
 
 #include <cmath>
+// #include <stdio.h>
 
 #include "hardware/clocks.h"
 #include "joybus.hpp"
@@ -41,6 +42,9 @@ int main() {
 
     // Load configuration
     controller_configuration &config = controller_configuration::get_instance();
+    // stdio_init_all();
+    // sleep_ms(5000);
+    // printf("%lf + %lfx + %lfx^2 + %lfx^3\n", config.l_stick_coefficients.x_coefficients[0], config.l_stick_coefficients.x_coefficients[1], config.l_stick_coefficients.x_coefficients[2], config.l_stick_coefficients.x_coefficients[3]);
 
     // Now that we have a configuration, select a profile if combo is held
     uint16_t startup_buttons = get_buttons();
@@ -294,6 +298,8 @@ void read_sticks() {
     // Read sticks
     get_sticks(lx, ly, rx, ry, SAMPLE_DURATION);
 
+    // printf("L Stick X: %lf\n", lx);
+
     // Linearize values
     state.l_stick = linearize_stick(lx, ly, config.l_stick_coefficients);
     state.r_stick = linearize_stick(rx, ry, config.r_stick_coefficients);
@@ -303,15 +309,28 @@ stick linearize_stick(double x_raw, double y_raw,
                       stick_coefficients coefficients) {
     stick ret;
 
-    // Linearize x & y
-    ret.x = round(coefficients.x_coefficients[0] +
-                  (coefficients.x_coefficients[1] * x_raw) +
-                  (coefficients.x_coefficients[2] * x_raw * x_raw) +
-                  (coefficients.x_coefficients[3] * x_raw * x_raw * x_raw));
-    ret.y = round(coefficients.y_coefficients[0] +
-                  (coefficients.y_coefficients[1] * y_raw) +
-                  (coefficients.y_coefficients[2] * y_raw * y_raw) +
-                  (coefficients.y_coefficients[3] * y_raw * y_raw * y_raw));
+    // Linearize X
+    double linearized_x = 0;
+    for (int i = 0; i < NUM_COEFFICIENTS; ++i) {
+        double raised_raw = 1;
+        for (int j = 0; j < i; ++j) {
+            raised_raw *= x_raw;
+        }
+        linearized_x += coefficients.x_coefficients[i] * raised_raw;
+    }
+
+    // Linearize Y
+    double linearized_y = 0;
+    for (int i = 0; i < NUM_COEFFICIENTS; ++i) {
+        double raised_raw = 1;
+        for (int j = 0; j < i; ++j) {
+            raised_raw *= y_raw;
+        }
+        linearized_y += coefficients.y_coefficients[i] * raised_raw;
+    }
+
+    ret.x = round(linearized_x);
+    ret.y = round(linearized_y);
 
     return ret;
 }

@@ -241,8 +241,8 @@ void controller_configuration::configure_triggers() {
     multicore_lockout_start_blocking();
 
     // Set triggers to 0 initially
-    state.l_trigger = 0;
-    state.r_trigger = 0;
+    state.analog_triggers.l_trigger = 0;
+    state.analog_triggers.r_trigger = 0;
 
     bool buttons_released = false;
 
@@ -346,12 +346,12 @@ void controller_configuration::configure_triggers() {
             }
 
             // Display mode on left trigger & offset on right trigger
-            state.l_trigger = *mode;
-            state.r_trigger = *threshold;
+            state.analog_triggers.l_trigger = *mode;
+            state.analog_triggers.r_trigger = *threshold;
         } else {
             // Otherwise display nothing
-            state.l_trigger = 0;
-            state.r_trigger = 0;
+            state.analog_triggers.l_trigger = 0;
+            state.analog_triggers.r_trigger = 0;
         }
     }
 }

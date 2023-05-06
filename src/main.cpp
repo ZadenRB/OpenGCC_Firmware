@@ -58,7 +58,7 @@ int main() {
     }
 
     // Read buttons, sticks, and triggers once before starting communication
-    read_digital(get_buttons());
+    read_digital(startup_buttons);
     read_triggers();
     read_sticks();
 
@@ -190,11 +190,11 @@ void execute_combo() {
             config.configure_triggers();
             break;
         case (1 << START) | (1 << X) | (1 << LT_DIGITAL):
-            config.calibrate_stick(config.l_stick_coefficients, state.r_stick,
+            config.calibrate_stick(config.l_stick_coefficients, state.analog_sticks.r_stick,
                                    get_left_stick);
             break;
         case (1 << START) | (1 << X) | (1 << RT_DIGITAL):
-            config.calibrate_stick(config.r_stick_coefficients, state.l_stick,
+            config.calibrate_stick(config.r_stick_coefficients, state.analog_sticks.l_stick,
                                    get_right_stick);
             break;
         case (1 << START) | (1 << Y) | (1 << B):
@@ -225,14 +225,16 @@ void read_triggers() {
     get_triggers(lt, rt);
 
     // Apply analog trigger modes
-    state.l_trigger = apply_trigger_mode_analog(
+    triggers new_triggers;
+    new_triggers.l_trigger = apply_trigger_mode_analog(
         lt, config.l_trigger_threshold_value(), state.lt_pressed,
         config.mapping(LT_DIGITAL) == LT_DIGITAL, config.l_trigger_mode(),
         config.r_trigger_mode());
-    state.r_trigger = apply_trigger_mode_analog(
+    new_triggers.r_trigger = apply_trigger_mode_analog(
         rt, config.r_trigger_threshold_value(), state.rt_pressed,
         config.mapping(RT_DIGITAL) == RT_DIGITAL, config.r_trigger_mode(),
         config.l_trigger_mode());
+    state.analog_triggers = new_triggers;
 }
 
 uint8_t apply_trigger_mode_analog(uint8_t analog_value, uint8_t threshold_value,
@@ -301,8 +303,10 @@ void read_sticks() {
     // printf("L Stick X: %lf\n", lx);
 
     // Linearize values
-    state.l_stick = linearize_stick(lx, ly, config.l_stick_coefficients);
-    state.r_stick = linearize_stick(rx, ry, config.r_stick_coefficients);
+    sticks new_sticks;
+    new_sticks.l_stick = linearize_stick(lx, ly, config.l_stick_coefficients);
+    new_sticks.r_stick = linearize_stick(rx, ry, config.r_stick_coefficients);
+    state.analog_sticks = new_sticks;
 }
 
 stick linearize_stick(double x_raw, double y_raw,

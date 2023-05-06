@@ -45,6 +45,22 @@ struct stick {
     uint8_t y;
 };
 
+/// \brief Grouping of analog sticks
+struct sticks {
+    /// \brief State of left stick
+    stick l_stick;
+    /// \brief State of right stick
+    stick r_stick;
+};
+
+/// \brief Grouping of analog triggers
+struct triggers {
+    /// \brief state of left trigger
+    uint8_t l_trigger;
+    /// \brief state of right trigger
+    uint8_t r_trigger;
+};
+
 /// \brief Current controller state
 struct controller_state {
     /// \brief State of digital inputs
@@ -53,14 +69,10 @@ struct controller_state {
     bool lt_pressed = false;
     /// \brief Whether right trigger digital is pressed (post remap)
     bool rt_pressed = false;
-    /// \brief State of left stick
-    stick l_stick;
-    /// \brief State of right stick
-    stick r_stick;
-    /// \brief Left trigger analog value
-    uint8_t l_trigger;
-    /// \brief Right trigger analog value
-    uint8_t r_trigger;
+    /// \brief State of sticks
+    sticks analog_sticks;
+    /// \brief State of triggers (analog)
+    triggers analog_triggers;
     /// \brief `true` if origin has not been set, `false` if it has
     bool origin = true;
     /// \brief `true` if safe mode is active, `false` if it is not
@@ -78,8 +90,8 @@ struct controller_state {
 };
 
 /** \brief Global state
- * \note Not thread-safe. Must ensure each field is only ever written
- * from one core or in critical sections.
+ * \note Not inherently thread-safe, take care with any state shared between
+ * cores.
  */
 extern controller_state state;
 

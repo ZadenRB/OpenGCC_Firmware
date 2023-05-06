@@ -21,8 +21,6 @@ if (TARGET tinyusb_device)
         src/configuration.cpp
         src/curve_fitting.hpp
         src/curve_fitting.tpp
-        src/joybus_uf2.hpp
-        src/joybus_uf2.cpp
         src/joybus.hpp
         src/joybus.cpp
         src/main.hpp

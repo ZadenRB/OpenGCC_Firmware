@@ -21,7 +21,6 @@
 #include "hardware/dma.h"
 #include "hardware/pio.h"
 #include "joybus.pio.h"
-#include "joybus_uf2.hpp"
 #include "state.hpp"
 
 PIO joybus_pio;
@@ -88,16 +87,13 @@ void handle_console_request() {
         case 0x43:
             request_len = 2;
             break;
-        case 0x45:
-            request_len = 4;
-            break;
         default:
             request_len = 0;
             break;
     }
 
     // Collect the rest of the console request
-    std::array<uint8_t, 4> request;
+    std::array<uint8_t, 2> request;
     for (std::size_t i = 0; i < request_len; ++i) {
         // Wait a max of 48us for a new item to be pushed into the RX FIFO,
         // otherwise assume we caught the middle of a command & return
@@ -121,14 +117,13 @@ void handle_console_request() {
     // Set & send response
     switch (cmd) {
         case 0xFF:
-        case 0x00: {
+        case 0x00:
             // Device identifier
             tx_buf[0] = 0x09;
             tx_buf[1] = 0x00;
             tx_buf[2] = 0x03;
             send_data(3);
             return;
-        }
         case 0x40:
             if (request[0] > 0x04) {
                 request[0] = 0x00;
@@ -142,29 +137,6 @@ void handle_console_request() {
         case 0x43:
             request[0] = 0x05;
             break;
-        case 0x44: {
-            // Firmware version X.Y.Z {X, Y, Z}
-            tx_buf[0] = 0x00;
-            tx_buf[1] = 0x00;
-            tx_buf[2] = 0x00;
-            send_data(3);
-            return;
-        }
-        case 0x45: {
-            uint32_t requested_firmware_size = request[0] | (request[1] << 8) |
-                                               (request[2] << 16) |
-                                               (request[3] << 24);
-            if (requested_firmware_size <=
-                PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE) {
-                tx_buf[0] = 0x00;
-                send_data(1);
-                joybus_uf2_enter();
-            } else {
-                tx_buf[0] = 0x01;
-                send_data(1);
-            }
-            return;
-        }
         default:
             // Continue reading if command was unknown
             return;
@@ -180,37 +152,45 @@ void send_data(uint32_t length) {
 }
 
 void send_mode(uint8_t mode) {
+    // Copy state that could be updated from other core
+    sticks sticks_copy = sticks_copy;
+    triggers triggers_copy = state.analog_triggers;
+
     // Fill tx_buf based on mode and initiate send
     switch (mode) {
         case 0x00:
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
-            tx_buf[2] = state.l_stick.x;
-            tx_buf[3] = state.l_stick.y;
-            tx_buf[4] = state.r_stick.x;
-            tx_buf[5] = state.r_stick.y;
-            tx_buf[6] = (state.l_trigger & 0xF0) | (state.r_trigger >> 4);
+            tx_buf[2] = sticks_copy.l_stick.x;
+            tx_buf[3] = sticks_copy.l_stick.y;
+            tx_buf[4] = sticks_copy.r_stick.x;
+            tx_buf[5] = sticks_copy.r_stick.y;
+            tx_buf[6] = (triggers_copy.l_trigger & 0xF0) |
+                        (triggers_copy.r_trigger >> 4);
             tx_buf[7] = 0x00;
             send_data(8);
             break;
         case 0x01:
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
-            tx_buf[2] = state.l_stick.x;
-            tx_buf[3] = state.l_stick.y;
-            tx_buf[4] = (state.r_stick.x & 0xF0) | (state.r_stick.y >> 4);
-            tx_buf[5] = state.l_trigger;
-            tx_buf[6] = state.r_trigger;
+            tx_buf[2] = sticks_copy.l_stick.x;
+            tx_buf[3] = sticks_copy.l_stick.y;
+            tx_buf[4] =
+                (sticks_copy.r_stick.x & 0xF0) | (sticks_copy.r_stick.y >> 4);
+            tx_buf[5] = triggers_copy.l_trigger;
+            tx_buf[6] = triggers_copy.r_trigger;
             tx_buf[7] = 0x00;
             send_data(8);
             break;
         case 0x02:
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
-            tx_buf[2] = state.l_stick.x;
-            tx_buf[3] = state.l_stick.y;
-            tx_buf[4] = (state.r_stick.x & 0xF0) | (state.r_stick.y >> 4);
-            tx_buf[5] = (state.l_trigger & 0xF0) | (state.r_trigger >> 4);
+            tx_buf[2] = sticks_copy.l_stick.x;
+            tx_buf[3] = sticks_copy.l_stick.y;
+            tx_buf[4] =
+                (sticks_copy.r_stick.x & 0xF0) | (sticks_copy.r_stick.y >> 4);
+            tx_buf[5] = (triggers_copy.l_trigger & 0xF0) |
+                        (triggers_copy.r_trigger >> 4);
             tx_buf[6] = 0x00;
             tx_buf[7] = 0x00;
             send_data(8);
@@ -218,21 +198,21 @@ void send_mode(uint8_t mode) {
         case 0x03:
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
-            tx_buf[2] = state.l_stick.x;
-            tx_buf[3] = state.l_stick.y;
-            tx_buf[4] = state.r_stick.x;
-            tx_buf[5] = state.r_stick.y;
-            tx_buf[6] = state.l_trigger;
-            tx_buf[7] = state.r_trigger;
+            tx_buf[2] = sticks_copy.l_stick.x;
+            tx_buf[3] = sticks_copy.l_stick.y;
+            tx_buf[4] = sticks_copy.r_stick.x;
+            tx_buf[5] = sticks_copy.r_stick.y;
+            tx_buf[6] = triggers_copy.l_trigger;
+            tx_buf[7] = triggers_copy.r_trigger;
             send_data(8);
             break;
         case 0x04:
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
-            tx_buf[2] = state.l_stick.x;
-            tx_buf[3] = state.l_stick.y;
-            tx_buf[4] = state.r_stick.x;
-            tx_buf[5] = state.r_stick.y;
+            tx_buf[2] = sticks_copy.l_stick.x;
+            tx_buf[3] = sticks_copy.l_stick.y;
+            tx_buf[4] = sticks_copy.r_stick.x;
+            tx_buf[5] = sticks_copy.r_stick.y;
             tx_buf[6] = 0x00;
             tx_buf[7] = 0x00;
             send_data(8);
@@ -240,12 +220,12 @@ void send_mode(uint8_t mode) {
         case 0x05:
             tx_buf[0] = state.buttons >> 8;
             tx_buf[1] = state.buttons & 0x00FF;
-            tx_buf[2] = state.l_stick.x;
-            tx_buf[3] = state.l_stick.y;
-            tx_buf[4] = state.r_stick.x;
-            tx_buf[5] = state.r_stick.y;
-            tx_buf[6] = state.l_trigger;
-            tx_buf[7] = state.r_trigger;
+            tx_buf[2] = sticks_copy.l_stick.x;
+            tx_buf[3] = sticks_copy.l_stick.y;
+            tx_buf[4] = sticks_copy.r_stick.x;
+            tx_buf[5] = sticks_copy.r_stick.y;
+            tx_buf[6] = triggers_copy.l_trigger;
+            tx_buf[7] = triggers_copy.r_trigger;
             tx_buf[8] = 0x00;
             tx_buf[9] = 0x00;
             send_data(10);

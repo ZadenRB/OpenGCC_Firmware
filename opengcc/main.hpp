@@ -1,19 +1,19 @@
 /*
     Copyright 2023 Zaden Ruggiero-Bouné
 
-    This file is part of NobGCC-SW.
+    This file is part of OpenGCC.
 
-    NobGCC-SW is free software: you can redistribute it and/or modify it under
+    OpenGCC is free software: you can redistribute it and/or modify it under
    the terms of the GNU General Public License as published by the Free Software
    Foundation, either version 3 of the License, or (at your option) any later
    version.
 
-    NobGCC-SW is distributed in the hope that it will be useful, but WITHOUT ANY
+    OpenGCC is distributed in the hope that it will be useful, but WITHOUT ANY
    WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
    A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License along with
-   NobGCC-SW If not, see http://www.gnu.org/licenses/.
+   OpenGCC If not, see http://www.gnu.org/licenses/.
 */
 
 #ifndef MAIN_H_
@@ -21,7 +21,9 @@
 
 #include <array>
 
-#include "board.hpp"
+#include "controller.hpp"
+#include "configuration.hpp"
+#include "state.hpp"
 
 /** \file main.hpp
  * \brief Main processor functions
@@ -106,7 +108,7 @@ void read_sticks();
  *
  * \return Linearized stick
  */
-stick linearize_stick(double x_raw, double y_raw,
+stick linearize_stick(uint16_t x_raw, uint16_t y_raw,
                       stick_coefficients coefficients);
 
 #endif  // MAIN_H_

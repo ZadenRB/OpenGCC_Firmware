@@ -1,28 +1,30 @@
 /*
     Copyright 2023 Zaden Ruggiero-Bouné
 
-    This file is part of NobGCC-SW.
+    This file is part of OpenGCC.
 
-    NobGCC-SW is free software: you can redistribute it and/or modify it under
+    OpenGCC is free software: you can redistribute it and/or modify it under
    the terms of the GNU General Public License as published by the Free Software
    Foundation, either version 3 of the License, or (at your option) any later
    version.
 
-    NobGCC-SW is distributed in the hope that it will be useful, but WITHOUT ANY
+    OpenGCC is distributed in the hope that it will be useful, but WITHOUT ANY
    WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
    A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License along with
-   NobGCC-SW If not, see http://www.gnu.org/licenses/.
+   OpenGCC If not, see http://www.gnu.org/licenses/.
 */
 
 #include "main.hpp"
 
 #include <cmath>
-// #include <stdio.h>
 
-#include "hardware/clocks.h"
+#include CONFIG_H
+#include "configuration.hpp"
 #include "joybus.hpp"
+#include "state.hpp"
+#include "hardware/clocks.h"
 #include "pico/multicore.h"
 #include "pico/stdlib.h"
 
@@ -42,9 +44,6 @@ int main() {
 
     // Load configuration
     controller_configuration &config = controller_configuration::get_instance();
-    // stdio_init_all();
-    // sleep_ms(5000);
-    // printf("%lf + %lfx + %lfx^2 + %lfx^3\n", config.l_stick_coefficients.x_coefficients[0], config.l_stick_coefficients.x_coefficients[1], config.l_stick_coefficients.x_coefficients[2], config.l_stick_coefficients.x_coefficients[3]);
 
     // Now that we have a configuration, select a profile if combo is held
     uint16_t startup_buttons = get_buttons();
@@ -63,7 +62,7 @@ int main() {
     read_sticks();
 
     // Start console communication
-    joybus_init(pio0, DATA);
+    joybus_init(pio0, DATA_IN_PIN, DATA_OUT_PIN);
 
     // Launch analog on core 1
     multicore_launch_core1(analog_main);
@@ -213,6 +212,7 @@ void analog_main() {
     while (true) {
         read_triggers();
         read_sticks();
+        sleep_ms(5);
     }
 }
 
@@ -295,12 +295,10 @@ uint8_t apply_trigger_mode_analog(uint8_t analog_value, uint8_t threshold_value,
 void read_sticks() {
     controller_configuration &config = controller_configuration::get_instance();
 
-    double lx, ly, rx, ry;
+    uint16_t lx, ly, rx, ry;
 
     // Read sticks
-    get_sticks(lx, ly, rx, ry, SAMPLE_DURATION);
-
-    // printf("L Stick X: %lf\n", lx);
+    get_sticks(lx, ly, rx, ry);
 
     // Linearize values
     sticks new_sticks;
@@ -309,7 +307,7 @@ void read_sticks() {
     state.analog_sticks = new_sticks;
 }
 
-stick linearize_stick(double x_raw, double y_raw,
+stick linearize_stick(uint16_t x_raw, uint16_t y_raw,
                       stick_coefficients coefficients) {
     stick ret;
 

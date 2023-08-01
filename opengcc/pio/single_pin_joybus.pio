@@ -1,0 +1,132 @@
+;    Copyright 2023 Zaden Ruggiero-Bouné
+;
+;    This file is part of OpenGCC.
+;
+;    OpenGCC is free software: you can redistribute it and/or modify it under
+;   the terms of the GNU General Public License as published by the Free Software
+;   Foundation, either version 3 of the License, or (at your option) any later
+;   version.
+;
+;    OpenGCC is distributed in the hope that it will be useful, but WITHOUT ANY
+;   WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+;   A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+;
+;    You should have received a copy of the GNU General Public License along with
+;   OpenGCC If not, see http://www.gnu.org/licenses/.
+
+.program single_pin_joybus
+
+; Handle communication between a Gamecube console and a Gamecube input device
+;
+; SM clock should be 16 MHz
+;
+; RECEIVE
+;
+; Listens for commands from the console and pushes them into the RX FIFO
+;
+; Autopush should be configured with a threshold of 8 bits
+;
+; The ISR should be configured to shift left
+;
+; IN/WAIT pin base should be set to in pin
+;
+; EXECCTRL_JMP_PIN should be set to in pin
+;
+; TRANSMIT
+;
+; Accepts the controller state in 8-bit chunks from the TX FIFO and sends them MSB first over GPIO
+;
+; Autopull should be configured with a threshold of 8 bits
+;
+; The OSR should be configured to shift left
+;
+; Out pin should be set to output
+
+
+.define T1 28
+.define T2 32
+.define T3 16
+.define T4 6
+.define T5 2
+
+receive:
+.wrap_target
+  wait 0 pin 0           [T1 - 1] ; Wait for data line to go low, then wait 1.75us
+  in pins, 1                      ; Read pin value
+  wait 1 pin 0                    ; Wait for data line to go high
+.wrap
+public read_stop_bit:
+  wait 1 pin 0                    ; Wait for data line to go high at end of last bit
+  wait 0 pin 0                    ; Wait for data line to go low at start of stop bit
+  wait 1 pin 0           [T2 - 9] ; Wait for data line to go high at end of stop bit, then delay 2us for stop bit to finish
+  set pins, 1                     ; Set pin high
+  set pindirs, 1                  ; Set pin to output
+  pull block                      ; Wait for first byte of data before beginning transmission
+  jmp transmit                    ; Jump to send data
+pull_data:
+  pull noblock                    ; Pull if there is more data available
+transmit:
+  mov y, osr                      ; Copy OSR contents into scratch register Y
+  jmp x!=y send_data              ; If there is more data, continue to transmit
+  nop                    [T5 - 1] ; Wait two cycles to let previous bit finish
+  set pins, 0            [T2 - 1] ; Drive low for 2us for stop bit
+  set pins, 1                     ; Set pin high
+  set pindirs, 0                  ; Set pin to input
+  jmp receive            [T2 - 3] ; Remain high for 2us, then return to read loop
+send_data:
+  out null, 24                    ; Discard 24 MSBs to get the actual byte left-aligned
+  set y, 7                        ; Setup bit counter
+send_bit:
+  set pins, 0            [T3 - 1] ; Drive low at start of bit
+  out pins, 1            [T2 - 1] ; Drive low/let high based on OSR contents
+  set pins, 1            [T3 - 8] ; Let high at end of bit
+  jmp y-- delay                   ; If this isn't the last bit, delay extra cycles
+  jmp pull_data
+delay:
+  jmp send_bit           [T4 - 1] ; Delay 6 cycles to match with the 16 cycles between bytes
+
+% c-sdk {
+#include "hardware/clocks.h"
+#include "hardware/gpio.h"
+
+constexpr uint32_t FIFO_EMPTY = 0x00FF00FF;
+
+static inline void joybus_program_init(PIO pio, uint sm, uint offset, uint in_pin, uint out_pin) {
+  // Get default config
+  pio_sm_config c = single_pin_joybus_program_get_default_config(offset);
+
+  // Set clock divider to run at 16 MHz
+  float divider = (float)clock_get_hz(clk_sys) / (16 * MHZ);
+  sm_config_set_clkdiv(&c, divider);
+
+  // Set ISR to shift left, autopush with an 8-bit threshold
+  sm_config_set_in_shift(&c, false, true, 8);
+  // Set OSR to shift left, 8-bit threshold
+  sm_config_set_out_shift(&c, false, false, 8);
+
+  // Configure SM pins
+  sm_config_set_in_pins(&c, in_pin);
+  sm_config_set_out_pins(&c, out_pin, 1);
+  sm_config_set_set_pins(&c, out_pin, 1);
+
+  // Connect PIO to data pin
+  pio_gpio_init(pio, out_pin);
+
+  // Let data line high initially
+  pio_sm_set_pins_with_mask(pio, sm, 1 << out_pin, 1 << out_pin);
+
+  // Set out pin to out
+  pio_sm_set_consecutive_pindirs(pio, sm, out_pin, 1, true);
+
+  // Load configuration
+  pio_sm_init(pio, sm, offset, &c);
+
+  // Put magic value in register x
+  pio_sm_put_blocking(pio, sm, FIFO_EMPTY);
+  pio_sm_exec_wait_blocking(pio, sm, pio_encode_pull(0, 1));
+  pio_sm_exec_wait_blocking(pio, sm, pio_encode_out(pio_x, 32));
+
+  // Start the state machine
+  pio_sm_set_enabled(pio, sm, true);
+}
+%}

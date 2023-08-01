@@ -1,19 +1,19 @@
 /*
     Copyright 2023 Zaden Ruggiero-Bouné
 
-    This file is part of NobGCC-SW.
+    This file is part of OpenGCC.
 
-    NobGCC-SW is free software: you can redistribute it and/or modify it under
+    OpenGCC is free software: you can redistribute it and/or modify it under
    the terms of the GNU General Public License as published by the Free Software
    Foundation, either version 3 of the License, or (at your option) any later
    version.
 
-    NobGCC-SW is distributed in the hope that it will be useful, but WITHOUT ANY
+    OpenGCC is distributed in the hope that it will be useful, but WITHOUT ANY
    WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
    A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License along with
-   NobGCC-SW If not, see http://www.gnu.org/licenses/.
+   OpenGCC If not, see http://www.gnu.org/licenses/.
 */
 
 #ifndef CALIBRATION_H_
@@ -62,7 +62,7 @@ class stick_calibration {
      * \param x X-axis value to record
      * \param y Y-axis value to record
      */
-    void record_measurement(double x, double y);
+    void record_measurement(uint16_t x, uint16_t y);
 
     /// \brief Skip the current calibration step
     void skip_measurement();

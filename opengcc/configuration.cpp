@@ -1,28 +1,28 @@
 /*
     Copyright 2023 Zaden Ruggiero-Bouné
 
-    This file is part of NobGCC-SW.
+    This file is part of OpenGCC.
 
-    NobGCC-SW is free software: you can redistribute it and/or modify it under
+    OpenGCC is free software: you can redistribute it and/or modify it under
    the terms of the GNU General Public License as published by the Free Software
    Foundation, either version 3 of the License, or (at your option) any later
    version.
 
-    NobGCC-SW is distributed in the hope that it will be useful, but WITHOUT ANY
+    OpenGCC is distributed in the hope that it will be useful, but WITHOUT ANY
    WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
    A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License along with
-   NobGCC-SW If not, see http://www.gnu.org/licenses/.
+   OpenGCC If not, see http://www.gnu.org/licenses/.
 */
 
 #include "configuration.hpp"
 
-#include "board.hpp"
 #include "calibration.hpp"
+#include "controller.hpp"
+#include "state.hpp"
 #include "hardware/gpio.h"
 #include "pico/multicore.h"
-#include "read_pwm.pio.h"
 
 controller_configuration::controller_configuration() {
     uint32_t read_page = controller_configuration::read_page();
@@ -358,7 +358,7 @@ void controller_configuration::configure_triggers() {
 
 void controller_configuration::calibrate_stick(
     stick_coefficients &to_calibrate, stick &display_stick,
-    std::function<void(double &, double &, size_t)> get_stick) {
+    std::function<void(uint16_t &, uint16_t &)> get_stick) {
     // Lock core 1 to prevent stick output from being displayed
     multicore_lockout_start_blocking();
 
@@ -394,9 +394,9 @@ void controller_configuration::calibrate_stick(
                 calibration.undo_measurement();
                 break;
             case (1 << Z): {
-                double measured_x;
-                double measured_y;
-                get_stick(measured_x, measured_y, 50000);
+                uint16_t measured_x;
+                uint16_t measured_y;
+                get_stick(measured_x, measured_y);
                 calibration.record_measurement(measured_x, measured_y);
                 break;
             }

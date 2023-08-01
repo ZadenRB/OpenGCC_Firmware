@@ -1,19 +1,19 @@
 /*
     Copyright 2023 Zaden Ruggiero-Bouné
 
-    This file is part of NobGCC-SW.
+    This file is part of OpenGCC.
 
-    NobGCC-SW is free software: you can redistribute it and/or modify it under
+    OpenGCC is free software: you can redistribute it and/or modify it under
    the terms of the GNU General Public License as published by the Free Software
    Foundation, either version 3 of the License, or (at your option) any later
    version.
 
-    NobGCC-SW is distributed in the hope that it will be useful, but WITHOUT ANY
+    OpenGCC is distributed in the hope that it will be useful, but WITHOUT ANY
    WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
    A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License along with
-   NobGCC-SW If not, see http://www.gnu.org/licenses/.
+   OpenGCC If not, see http://www.gnu.org/licenses/.
 */
 
 #ifndef STATE_H_
@@ -29,13 +29,52 @@
  * persist between power cycles.
  */
 
-/// \brief Number of microseconds to sample sensors for before updating state
-constexpr uint SAMPLE_DURATION = 1000;
-
 /** \brief Threshold below which trigger will report 0 to prevent
  * trigger-tricking
  */
 constexpr uint8_t TRIGGER_TRICK_THRESHOLD = 5;
+
+/// \brief D-pad left bit in controller state
+constexpr uint DPAD_LEFT = 0;
+
+/// \brief D-pad right bit in controller state
+constexpr uint DPAD_RIGHT = 1;
+
+/// \brief D-pad down bit in controller state
+constexpr uint DPAD_DOWN = 2;
+
+/// \brief D-pad up bit in controller state
+constexpr uint DPAD_UP = 3;
+
+/// \brief Z button bit in controller state
+constexpr uint Z = 4;
+
+/// \brief Right trigger button bit in controller state
+constexpr uint RT_DIGITAL = 5;
+
+/// \brief Left trigger button bit in controller state
+constexpr uint LT_DIGITAL = 6;
+
+/// \brief A button bit in controller state
+constexpr uint A = 8;
+
+/// \brief B button bit in controller state
+constexpr uint B = 9;
+
+/// \brief X button bit in controller state
+constexpr uint X = 10;
+
+/// \brief Y button bit in controller state
+constexpr uint Y = 11;
+
+/// \brief Start button bit in controller state
+constexpr uint START = 12;
+
+/// \brief Always high bit in controller state
+constexpr uint ALWAYS_HIGH = 7;
+
+/// \brief Origin bit in controller state
+constexpr uint ORIGIN = 13;
 
 /// \brief Grouping of axes for a single analog stick
 struct stick {

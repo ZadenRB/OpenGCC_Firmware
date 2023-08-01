@@ -1,19 +1,19 @@
 /*
     Copyright 2023 Zaden Ruggiero-Bouné
 
-    This file is part of NobGCC-SW.
+    This file is part of OpenGCC.
 
-    NobGCC-SW is free software: you can redistribute it and/or modify it under
+    OpenGCC is free software: you can redistribute it and/or modify it under
    the terms of the GNU General Public License as published by the Free Software
    Foundation, either version 3 of the License, or (at your option) any later
    version.
 
-    NobGCC-SW is distributed in the hope that it will be useful, but WITHOUT ANY
+    OpenGCC is distributed in the hope that it will be useful, but WITHOUT ANY
    WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
    A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License along with
-   NobGCC-SW If not, see http://www.gnu.org/licenses/.
+   OpenGCC If not, see http://www.gnu.org/licenses/.
 */
 
 #ifndef JOYBUS_H_
@@ -230,9 +230,9 @@
  * </details>
  *
  * <details>
- * <summary>NobGCC Joybus implementation</summary>
+ * <summary>OpenGCC Joybus implementation</summary>
  * <h2>Overview</h2>
- * NobGCC takes advantages of the RP2040's PIO and DMA to implement the
+ * OpenGCC takes advantages of the RP2040's PIO and DMA to implement the
  * Joybus protocol with as little intervention from the main processor as
  * possible. After initial setup, the processor is only involved when a
  * command is received to process the command, and prepare the response.
@@ -280,9 +280,10 @@ extern std::array<uint8_t, 10> tx_buf;
 /** \brief Initialize Joybus functionality
  *
  * \param pio The PIO instance to use for Joybus
- * \param data_pin the I/O pin to use for Joybus
+ * \param data_in_pin the pin to use for Joybus receive
+ * \param data_out_pin the pin to use for Joybus transmit
 */
-void joybus_init(PIO pio, uint data_pin);
+void joybus_init(PIO pio, uint data_in_pin, uint data_out_pin);
 
 /** \brief Interrupt handler that reads commands and starts response
  * transmission
@@ -308,8 +309,5 @@ void send_data(uint32_t length);
  * for transmission
  */
 void send_mode(uint8_t mode);
-
-/// \brief Magic number for TX PIO to pull when FIFO is empty
-constexpr uint32_t FIFO_EMPTY = 0x00FF00FF;
 
 #endif  // JOYBUS_H_

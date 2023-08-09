@@ -1,4 +1,4 @@
-function(add_controller CONTROLLER)
+function(add_controller CONTROLLER CONTROLLER_TARGET)
     add_subdirectory(${CONTROLLER})
 
     get_target_property(OPENGCC_SOURCE_DIR OpenGCC SOURCE_DIR)
@@ -10,6 +10,7 @@ function(add_controller CONTROLLER)
         CONFIG_H="${CONTROLLER_SOURCE_DIR}/config.hpp"
     )
 
-    get_property(controller_target DIRECTORY ${CONTROLLER_SOURCE_DIR} PROPERTY BUILDSYSTEM_TARGETS)
-    target_link_libraries(${controller_target} OpenGCC)
+    target_link_libraries(${CONTROLLER_TARGET} OpenGCC)
+    pico_set_binary_type(${CONTROLLER_TARGET} copy_to_ram)
+    
 endfunction()

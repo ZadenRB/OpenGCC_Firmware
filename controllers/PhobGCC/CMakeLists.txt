@@ -8,3 +8,5 @@ target_sources(PhobGCC PRIVATE
 target_link_libraries(PhobGCC
     hardware_spi
 )
+
+pico_add_extra_outputs(PhobGCC)

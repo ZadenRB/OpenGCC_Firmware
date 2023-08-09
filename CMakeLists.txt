@@ -29,13 +29,13 @@ if (TARGET tinyusb_device)
         opengcc/state.cpp
     )
 
-    target_include_directories(OpenGCC INTERFACE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-    )
+    # target_include_directories(OpenGCC INTERFACE
+    #     ${CMAKE_CURRENT_SOURCE_DIR}
+    # )
 
-    target_compile_definitions(OpenGCC INTERFACE
-        PICO_FLASH_SIZE_BYTES=16777216
-    )
+    # target_compile_definitions(OpenGCC INTERFACE
+    #     PICO_FLASH_SIZE_BYTES=16777216
+    # )
 
     target_link_libraries(OpenGCC INTERFACE
         hardware_adc
@@ -46,17 +46,12 @@ if (TARGET tinyusb_device)
         pico_stdlib
     )
 
-    pico_set_binary_type(OpenGCC copy_to_ram)
-
     pico_generate_pio_header(OpenGCC ${CMAKE_CURRENT_SOURCE_DIR}/opengcc/pio/joybus.pio)
     pico_generate_pio_header(OpenGCC ${CMAKE_CURRENT_SOURCE_DIR}/opengcc/pio/single_pin_joybus.pio)
 
-    pico_enable_stdio_usb(OpenGCC 1)
-    pico_enable_stdio_uart(OpenGCC 0)
-
     # Add your controller here
-    add_controller(controllers/NobGCC/rev1)
-    add_controller(controllers/PhobGCC)
+    add_controller(controllers/NobGCC/rev1 NobGCC_rev1)
+    add_controller(controllers/PhobGCC PhobGCC)
 elseif(PICO_ON_DEVICE)
     message(WARNING "not building OpenGCC because TinyUSB submodule is not initialized in the SDK")
 endif()

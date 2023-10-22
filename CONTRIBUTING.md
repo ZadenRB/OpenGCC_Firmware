@@ -10,7 +10,7 @@ OpenGCC aims to provide full-featured support for as many controllers as possibl
 6. [Open a pull request](#opening-a-pull-request) from your fork to the main repository.
 
 ## Opening a pull request
-Link the related issue in your PR title, i.e. "[#Issue] PR Title".
+Link the related issue in your PR title, i.e. "[#Issue] PR Title."
 
 ## Merging Changes
 Once your pull request is approved, squash your commits into one with the format "(PR Number) [Issue Number] Short description."

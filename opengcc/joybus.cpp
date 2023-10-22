@@ -18,9 +18,8 @@
 
 #include "joybus.hpp"
 
-#include "hardware/dma.h"
-#include "hardware/pio.h"
-#if DATA_IN_PIN == DATA_OUT_PIN
+#include CONFIG_H
+#if JOYBUS_IN_PIN == JOYBUS_OUT_PIN
     #include "single_pin_joybus.pio.h"
     const pio_program program = single_pin_joybus_program;
     const uint stop_bit_offset = single_pin_joybus_offset_read_stop_bit;
@@ -30,6 +29,8 @@
     const uint stop_bit_offset = joybus_offset_read_stop_bit;
 #endif
 #include "state.hpp"
+#include "hardware/dma.h"
+#include "hardware/pio.h"
 
 PIO joybus_pio;
 uint joybus_sm;
@@ -41,10 +42,7 @@ std::array<uint8_t, 2> request;
 
 uint jump_instruction;
 
-void joybus_init(PIO pio, uint data_in_pin, uint data_out_pin) {
-    // Pull up data line
-    gpio_pull_up(data_in_pin);
-
+void joybus_init(PIO pio, uint in_pin, uint out_pin) {
     // Joybus PIO
     joybus_pio = pio;
 
@@ -72,8 +70,8 @@ void joybus_init(PIO pio, uint data_in_pin, uint data_out_pin) {
 
     irq_set_enabled(PIO0_IRQ_0, true);
 
-    joybus_program_init(joybus_pio, joybus_sm, joybus_offset, data_in_pin,
-                        data_out_pin);
+    joybus_program_init(joybus_pio, joybus_sm, joybus_offset, in_pin,
+                        out_pin);
 }
 
 void handle_console_request() {

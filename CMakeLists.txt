@@ -29,13 +29,9 @@ if (TARGET tinyusb_device)
         opengcc/state.cpp
     )
 
-    # target_include_directories(OpenGCC INTERFACE
-    #     ${CMAKE_CURRENT_SOURCE_DIR}
-    # )
-
-    # target_compile_definitions(OpenGCC INTERFACE
-    #     PICO_FLASH_SIZE_BYTES=16777216
-    # )
+    target_include_directories(OpenGCC INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
 
     target_link_libraries(OpenGCC INTERFACE
         hardware_adc

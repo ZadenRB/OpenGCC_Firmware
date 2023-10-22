@@ -113,7 +113,7 @@ static inline void joybus_program_init(PIO pio, uint sm, uint offset, uint in_pi
   pio_sm_set_pins_with_mask(pio, sm, 1 << out_pin, 1 << out_pin);
 
   // Set out pin to out
-  pio_sm_set_consecutive_pindirs(pio, sm, out_pin, 1, true);
+  pio_sm_set_pindirs_with_mask(pio, sm, 1 << out_pin, 1 << out_pin);
 
   // Load configuration
   pio_sm_init(pio, sm, offset, &c);

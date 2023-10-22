@@ -280,10 +280,10 @@ extern std::array<uint8_t, 10> tx_buf;
 /** \brief Initialize Joybus functionality
  *
  * \param pio The PIO instance to use for Joybus
- * \param data_in_pin the pin to use for Joybus receive
- * \param data_out_pin the pin to use for Joybus transmit
+ * \param in_pin The pin to use for Joybus receive
+ * \param out_pin The pin to use for Joybus transmit
 */
-void joybus_init(PIO pio, uint data_in_pin, uint data_out_pin);
+void joybus_init(PIO pio, uint in_pin, uint out_pin);
 
 /** \brief Interrupt handler that reads commands and starts response
  * transmission

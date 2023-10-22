@@ -147,17 +147,17 @@ void get_stick(i2c_inst_t* i2c, uint16_t &x_out, uint16_t &y_out) {
     read_si7210_data(i2c, Y_I2C_ADDR, y_out);
 }
 
-void get_sticks(uint16_t &lx_out, uint16_t &ly_out, uint16_t &rx_out, uint16_t &ry_out) {
-    get_stick(i2c0, lx_out, ly_out);
-    get_stick(i2c1, rx_out, ry_out);
-}
-
 void get_left_stick(uint16_t &x_out, uint16_t &y_out) {
     get_stick(i2c0, x_out, y_out);
 }
 
 void get_right_stick(uint16_t &x_out, uint16_t &y_out) {
     get_stick(i2c1, x_out, y_out);
+}
+
+void get_sticks(uint16_t &lx_out, uint16_t &ly_out, uint16_t &rx_out, uint16_t &ry_out) {
+    get_left_stick(lx_out, ly_out);
+    get_right_stick(rx_out, ry_out);
 }
 
 void get_triggers(uint8_t &l_out, uint8_t &r_out) {

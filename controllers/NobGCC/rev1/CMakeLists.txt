@@ -9,4 +9,8 @@ target_link_libraries(NobGCC_rev1
     hardware_i2c
 )
 
+target_compile_definitions(OpenGCC INTERFACE
+    PICO_FLASH_SIZE_BYTES=16777216
+) 
+
 pico_add_extra_outputs(NobGCC_rev1)

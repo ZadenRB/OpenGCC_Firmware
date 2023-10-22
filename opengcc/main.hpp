@@ -91,24 +91,35 @@ uint8_t apply_trigger_mode_analog(uint8_t analog_value, uint8_t threshold_value,
                                   bool digital_value, bool enable_analog,
                                   trigger_mode mode, trigger_mode other_mode);
 
-/** \brief Read and process analog sticks
- *
- * \param lx_raw Location of PWM high / low data for left stick X
- * \param ly_raw Location of PWM high / low data for left stick Y
- * \param rx_raw Location of PWM high / low data for right stick X
- * \param ry_raw Location of PWM high / low data for right stick Y
- */
+/// \brief Read analog sticks and update state
 void read_sticks();
 
-/** \brief Linearize a stick using the given coefficients
- *
- * \param x_raw Raw x-axis value to linearize
- * \param y_raw Raw y-axis value to linearize
- * \param stick_coefficients Coefficients to use for x-axis linearization
- *
- * \return Linearized stick
+/** \brief Process raw stick data, running it through linearization and rempping
+ * 
+ * \param x_raw Raw x-axis value
+ * \param y_raw Raw y-axis value
+ * \param stick_coefficients Coefficients used to linearize stick
+ * 
+ * \return Stick data for use in state
  */
-stick linearize_stick(uint16_t x_raw, uint16_t y_raw,
-                      stick_coefficients coefficients);
+stick process_raw_stick(uint16_t x_raw, uint16_t y_raw, stick_coefficients coefficients);
+
+/** \brief Linearize an axis using the given coefficients
+ *
+ * \param axis_raw Raw axis value to linearize
+ * \param axis_coefficients Coefficients to use for axis linearization
+ *
+ * \return Linearized axis value
+ */
+double linearize_axis(uint16_t axis_raw, std::array<double, NUM_COEFFICIENTS> coefficients);
+
+/** \brief Remap linearized stick data for notches and cardinals
+ * 
+ * \param linearized_x Linearized x-axis value
+ * \param linearized_y Linearized y-axis value
+ * 
+ * \return Stick data for use in state
+*/
+stick remap_stick(double linearized_x, double linearized_y);
 
 #endif  // MAIN_H_

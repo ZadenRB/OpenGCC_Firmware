@@ -62,7 +62,7 @@ int main() {
     read_sticks();
 
     // Start console communication
-    joybus_init(pio0, DATA_IN_PIN, DATA_OUT_PIN);
+    joybus_init(pio0, JOYBUS_IN_PIN, JOYBUS_OUT_PIN);
 
     // Launch analog on core 1
     multicore_launch_core1(analog_main);
@@ -212,7 +212,6 @@ void analog_main() {
     while (true) {
         read_triggers();
         read_sticks();
-        sleep_ms(5);
     }
 }
 
@@ -302,37 +301,44 @@ void read_sticks() {
 
     // Linearize values
     sticks new_sticks;
-    new_sticks.l_stick = linearize_stick(lx, ly, config.l_stick_coefficients);
-    new_sticks.r_stick = linearize_stick(rx, ry, config.r_stick_coefficients);
+    new_sticks.l_stick = process_raw_stick(lx, ly, config.l_stick_coefficients);
+    new_sticks.r_stick = process_raw_stick(rx, ry, config.r_stick_coefficients);
     state.analog_sticks = new_sticks;
 }
 
-stick linearize_stick(uint16_t x_raw, uint16_t y_raw,
-                      stick_coefficients coefficients) {
-    stick ret;
+stick process_raw_stick(uint16_t x_raw, uint16_t y_raw, stick_coefficients coefficients) {
+    double linearized_x = linearize_axis(x_raw, coefficients.x_coefficients);
+    double linearized_y = linearize_axis(y_raw, coefficients.y_coefficients);
 
-    // Linearize X
-    double linearized_x = 0;
+    return remap_stick(linearized_x, linearized_y);
+}
+
+double linearize_axis(uint16_t axis_raw, std::array<double, NUM_COEFFICIENTS> axis_coefficients) {
+    // Linearize axis
+    double linearized_axis = 0;
     for (int i = 0; i < NUM_COEFFICIENTS; ++i) {
         double raised_raw = 1;
         for (int j = 0; j < i; ++j) {
-            raised_raw *= x_raw;
+            raised_raw *= axis_raw;
         }
-        linearized_x += coefficients.x_coefficients[i] * raised_raw;
+        linearized_axis += axis_coefficients[i] * raised_raw;
     }
 
-    // Linearize Y
-    double linearized_y = 0;
-    for (int i = 0; i < NUM_COEFFICIENTS; ++i) {
-        double raised_raw = 1;
-        for (int j = 0; j < i; ++j) {
-            raised_raw *= y_raw;
-        }
-        linearized_y += coefficients.y_coefficients[i] * raised_raw;
+    return linearized_axis;
+}
+
+stick remap_stick(double linearized_x, double linearized_y) {
+    uint8_t x = round(linearized_x);
+    uint8_t y = round(linearized_y);
+
+    if (abs(x) >= 80 && abs(y) <= 6) {
+        y = 0;
+    } else if (abs(y) >= 80 && abs(x) <= 6) {
+        x = 0;
     }
 
-    ret.x = round(linearized_x);
-    ret.y = round(linearized_y);
-
-    return ret;
+    return stick {
+        x: x,
+        y: y
+    };
 }

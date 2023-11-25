@@ -274,9 +274,6 @@
  * </details>
  */
 
-/// \brief Global buffer for bytes to transmit
-extern std::array<uint8_t, 10> tx_buf;
-
 /** \brief Initialize Joybus functionality
  *
  * \param pio The PIO instance to use for Joybus

@@ -241,11 +241,6 @@ uint8_t apply_trigger_mode_analog(uint8_t analog_value, uint8_t threshold_value,
                                   trigger_mode mode, trigger_mode other_mode) {
     uint8_t out = 0;
 
-    // Prevent accidental trigger-tricking
-    if (analog_value <= TRIGGER_TRICK_THRESHOLD) {
-        analog_value = 0;
-    }
-
     switch (mode) {
         case digital_only:
             out = 0;

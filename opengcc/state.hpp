@@ -29,11 +29,6 @@
  * persist between power cycles.
  */
 
-/** \brief Threshold below which trigger will report 0 to prevent
- * trigger-tricking
- */
-constexpr uint8_t TRIGGER_TRICK_THRESHOLD = 5;
-
 /// \brief D-pad left bit in controller state
 constexpr uint DPAD_LEFT = 0;
 

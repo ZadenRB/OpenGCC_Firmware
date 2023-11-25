@@ -38,7 +38,7 @@ uint joybus_offset;
 uint joybus_dma;
 
 std::array<uint8_t, 10> tx_buf = {};
-std::array<uint8_t, 2> request;
+std::array<uint8_t, 2> request = {};
 
 uint jump_instruction;
 
@@ -52,13 +52,6 @@ void joybus_init(PIO pio, uint in_pin, uint out_pin) {
 
     joybus_sm = pio_claim_unused_sm(joybus_pio, true);
 
-    // Joybus RX IRQ
-    irq_set_exclusive_handler(PIO0_IRQ_0, handle_console_request);
-    pio_set_irq0_source_enabled(joybus_pio,
-                                static_cast<pio_interrupt_source>(
-                                    pis_sm0_rx_fifo_not_empty + joybus_sm),
-                                true);
-
     // Joybus TX DMA
     joybus_dma = dma_claim_unused_channel(true);
     dma_channel_config tx_config = dma_channel_get_default_config(joybus_dma);
@@ -68,13 +61,22 @@ void joybus_init(PIO pio, uint in_pin, uint out_pin) {
     dma_channel_set_config(joybus_dma, &tx_config, false);
     dma_channel_set_write_addr(joybus_dma, &joybus_pio->txf[joybus_sm], false);
 
+    // Joybus RX IRQ
+    irq_set_exclusive_handler(PIO0_IRQ_0, handle_console_request);
     irq_set_enabled(PIO0_IRQ_0, true);
+    pio_set_irq0_source_enabled(joybus_pio,
+                                static_cast<pio_interrupt_source>(
+                                    pis_sm0_rx_fifo_not_empty + joybus_sm),
+                                true);
 
     joybus_program_init(joybus_pio, joybus_sm, joybus_offset, in_pin,
                         out_pin);
 }
 
 void handle_console_request() {
+    // Disable IRQ to avoid interrupt reentrancy
+    irq_set_enabled(PIO0_IRQ_0, false);
+
     uint32_t cmd = pio_sm_get(joybus_pio, joybus_sm);
 
     // Determine request length based on command
@@ -100,6 +102,8 @@ void handle_console_request() {
                 // Clear ISR (mov isr, null)
                 pio_sm_exec(joybus_pio, joybus_sm,
                             pio_encode_mov(pio_isr, pio_null));
+                // Re-enable IRQ now that FIFO is emptied
+                irq_set_enabled(PIO0_IRQ_0, true);
                 return;
             }
         }
@@ -108,6 +112,9 @@ void handle_console_request() {
 
     // Make state machine process stop bit
     pio_sm_exec(joybus_pio, joybus_sm, jump_instruction);
+
+    // Re-enable IRQ now that FIFO is emptied
+    irq_set_enabled(PIO0_IRQ_0, true);
 
     // Set & send response
     switch (cmd) {
@@ -138,7 +145,6 @@ void handle_console_request() {
     }
 
     send_mode(request[0]);
-    return;
 }
 
 void send_data(uint32_t length) {
@@ -147,7 +153,7 @@ void send_data(uint32_t length) {
 
 void send_mode(uint8_t mode) {
     // Copy state that could be updated from other core
-    sticks sticks_copy = sticks_copy;
+    sticks sticks_copy = state.analog_sticks;
     triggers triggers_copy = state.analog_triggers;
 
     // Fill tx_buf based on mode and initiate send

@@ -290,11 +290,8 @@ void read_sticks() {
     controller_configuration &config = controller_configuration::get_instance();
 
     uint16_t lx, ly, rx, ry;
-
-    // Read sticks
     get_sticks(lx, ly, rx, ry);
 
-    // Linearize values
     sticks new_sticks;
     new_sticks.l_stick = process_raw_stick(lx, ly, config.l_stick_coefficients);
     new_sticks.r_stick = process_raw_stick(rx, ry, config.r_stick_coefficients);
@@ -309,7 +306,6 @@ stick process_raw_stick(uint16_t x_raw, uint16_t y_raw, stick_coefficients coeff
 }
 
 double linearize_axis(uint16_t axis_raw, std::array<double, NUM_COEFFICIENTS> axis_coefficients) {
-    // Linearize axis
     double linearized_axis = 0;
     for (int i = 0; i < NUM_COEFFICIENTS; ++i) {
         double raised_raw = 1;
@@ -323,8 +319,8 @@ double linearize_axis(uint16_t axis_raw, std::array<double, NUM_COEFFICIENTS> ax
 }
 
 stick remap_stick(double linearized_x, double linearized_y) {
-    uint8_t x = round(linearized_x);
-    uint8_t y = round(linearized_y);
+    uint8_t x = round(std::clamp(linearized_x, 27.0, 227.0));
+    uint8_t y = round(std::clamp(linearized_y, 27.0, 227.0));
 
     if (abs(x) >= 80 && abs(y) <= 6) {
         y = 0;

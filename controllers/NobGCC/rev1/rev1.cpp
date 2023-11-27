@@ -35,7 +35,7 @@ constexpr uint8_t data_reg = 0xC1;
 
 std::array<uint8_t, 2> stick_raw;
 
-alignas(16) std::array<uint8_t, 2> triggers_raw; 
+alignas(16) std::array<uint8_t, 2> triggers_raw;
 
 void init_buttons() {
     // Set buttons as pull-up inputs

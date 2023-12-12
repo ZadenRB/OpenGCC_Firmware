@@ -23,7 +23,10 @@
 #ifndef REV1_H_
 #define REV1_H_
 
+#include "hardware/i2c.h"
 #include "pico/types.h"
+
+#include <array>
 
 /// \brief D-pad left pin
 constexpr uint DPAD_LEFT_PIN = 0;
@@ -94,5 +97,38 @@ constexpr uint16_t PHYSICAL_BUTTONS_MASK =
     (1 << DPAD_LEFT_PIN) | (1 << DPAD_RIGHT_PIN) | (1 << DPAD_DOWN_PIN) | (1 << DPAD_UP_PIN) |
     (1 << Z_PIN) | (1 << RT_DIGITAL_PIN) | (1 << LT_DIGITAL_PIN) | (1 << A_PIN) | (1 << B_PIN) |
     (1 << X_PIN) | (1 << Y_PIN) | (1 << START_PIN);
+
+// I2C addresses of sensors for X & Y addresses
+constexpr uint32_t X_I2C_ADDR = 0x32;
+constexpr uint32_t Y_I2C_ADDR = 0x33;
+
+// Constants to transfer 0/1 via DMA
+constexpr uint32_t ZERO = 0x0;
+constexpr uint32_t ONE = 0x1;
+
+// Si7210 configuration data
+constexpr std::array<uint8_t, 2> SI7210_AUTO_INCREMENT_CONFIG = {0xC5, 0x01};
+constexpr std::array<uint8_t, 2> SI7210_IDLE_CONFIG = {0xC9, 0xFE};
+constexpr std::array<uint8_t, 2> SI7210_IDLE_TIME_CONFIG = {0xC8, 0x00};
+constexpr std::array<uint8_t, 2> SI7210_START_CONFIG = {0xC4, 0x00};
+constexpr std::array<uint16_t, 3> SI7210_READ_DATA_COMMANDS = {
+    I2C_IC_DATA_CMD_RESTART_BITS | 0xC1,
+    I2C_IC_DATA_CMD_RESTART_BITS | I2C_IC_DATA_CMD_CMD_BITS,
+    I2C_IC_DATA_CMD_STOP_BITS | I2C_IC_DATA_CMD_CMD_BITS
+};
+
+// DMA control block
+struct control_block {
+    const volatile void *read_address;
+    volatile void *write_address;
+    uint transfer_count;
+    uint32_t control_register;
+};
+
+// Raw stick
+struct raw_stick {
+    uint16_t x;
+    uint16_t y;
+};
 
 #endif // REV1_H_ 

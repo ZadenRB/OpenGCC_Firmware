@@ -21,6 +21,7 @@
 #include <cmath>
 
 #include CONFIG_H
+#include "calibration.hpp"
 #include "configuration.hpp"
 #include "joybus.hpp"
 #include "state.hpp"
@@ -56,6 +57,9 @@ int main() {
             break;
     }
 
+    state.l_stick_coefficients = stick_calibration(config.l_stick_range, config.l_stick_calibration_measurement).generate_coefficients();
+    state.r_stick_coefficients = stick_calibration(config.r_stick_range, config.r_stick_calibration_measurement).generate_coefficients();
+    
     // Read buttons, sticks, and triggers once before starting communication
     read_digital(startup_buttons);
     read_triggers();
@@ -189,11 +193,11 @@ void execute_combo() {
             config.configure_triggers();
             break;
         case (1 << START) | (1 << X) | (1 << LT_DIGITAL):
-            config.calibrate_stick(config.l_stick_coefficients, state.analog_sticks.r_stick,
+            config.calibrate_stick(state.l_stick_coefficients, config.l_stick_calibration_measurement, config.l_stick_range, state.analog_sticks.r_stick,
                                    get_left_stick);
             break;
         case (1 << START) | (1 << X) | (1 << RT_DIGITAL):
-            config.calibrate_stick(config.r_stick_coefficients, state.analog_sticks.l_stick,
+            config.calibrate_stick(state.r_stick_coefficients, config.r_stick_calibration_measurement, config.r_stick_range, state.analog_sticks.l_stick,
                                    get_right_stick);
             break;
         case (1 << START) | (1 << Y) | (1 << B):
@@ -293,16 +297,16 @@ void read_sticks() {
     get_sticks(lx, ly, rx, ry);
 
     sticks new_sticks;
-    new_sticks.l_stick = process_raw_stick(lx, ly, config.l_stick_coefficients);
-    new_sticks.r_stick = process_raw_stick(rx, ry, config.r_stick_coefficients);
+    new_sticks.l_stick = process_raw_stick(lx, ly, state.l_stick_coefficients, config.l_stick_range);
+    new_sticks.r_stick = process_raw_stick(rx, ry, state.r_stick_coefficients, config.r_stick_range);
     state.analog_sticks = new_sticks;
 }
 
-stick process_raw_stick(uint16_t x_raw, uint16_t y_raw, stick_coefficients coefficients) {
+stick process_raw_stick(uint16_t x_raw, uint16_t y_raw, stick_coefficients coefficients, uint8_t range) {
     double linearized_x = linearize_axis(x_raw, coefficients.x_coefficients);
     double linearized_y = linearize_axis(y_raw, coefficients.y_coefficients);
 
-    return remap_stick(linearized_x, linearized_y);
+    return remap_stick(linearized_x, linearized_y, range);
 }
 
 double linearize_axis(uint16_t axis_raw, std::array<double, NUM_COEFFICIENTS> axis_coefficients) {
@@ -318,18 +322,22 @@ double linearize_axis(uint16_t axis_raw, std::array<double, NUM_COEFFICIENTS> ax
     return linearized_axis;
 }
 
-stick remap_stick(double linearized_x, double linearized_y) {
-    uint8_t x = round(std::clamp(linearized_x, 27.0, 227.0));
-    uint8_t y = round(std::clamp(linearized_y, 27.0, 227.0));
+stick remap_stick(double linearized_x, double linearized_y, uint8_t range) {
+    controller_configuration &config = controller_configuration::get_instance();
+    double min_value = CENTER - range;
+    double max_value = CENTER + range;
 
-    if (abs(x) >= 80 && abs(y) <= 6) {
-        y = 0;
-    } else if (abs(y) >= 80 && abs(x) <= 6) {
-        x = 0;
+    int x = round(std::clamp(linearized_x, min_value, max_value));
+    int y = round(std::clamp(linearized_y, min_value, max_value));
+
+    if (abs(x - CENTER) >= 80 && abs(y - CENTER) <= 6) {
+        y = CENTER;
+    } else if (abs(y - CENTER) >= 80 && abs(x - CENTER) <= 6) {
+        x = CENTER;
     }
 
     return stick {
-        x: x,
-        y: y
+        x: static_cast<uint8_t>(x),
+        y: static_cast<uint8_t>(y)
     };
 }

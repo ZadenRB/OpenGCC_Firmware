@@ -23,6 +23,7 @@
 #include <functional>
 
 #include "hardware/flash.h"
+#include "calibration.hpp"
 #include "state.hpp"
 
 /** \file configuration.hpp
@@ -84,18 +85,6 @@ struct configuration_profile {
     uint8_t r_trigger_threshold_value;
 };
 
-/// \brief Number of coefficients for stick linearization
-constexpr size_t NUM_COEFFICIENTS = 4;
-
-/// \brief Calibration points for x & y axis of an analog stick.
-struct stick_coefficients {
-    /// \brief Coefficients for x-axis linearization
-    std::array<double, NUM_COEFFICIENTS> x_coefficients;
-
-    /// \brief Coefficients for y axis of linearization
-    std::array<double, NUM_COEFFICIENTS> y_coefficients;
-};
-
 /** \brief Current controller configuration
  *
  * \note Implemented as a singleton
@@ -105,8 +94,8 @@ class controller_configuration {
     controller_configuration();
     controller_configuration &operator=(controller_configuration &&) = default;
 
-    static uint32_t read_page();
-    static uint32_t write_page();
+    static int read_page();
+    static int write_page();
 
    public:
     /// \brief Profiles
@@ -115,11 +104,17 @@ class controller_configuration {
     /// \brief Current profile
     size_t current_profile;
 
-    /// \brief Left stick linearization coefficients
-    stick_coefficients l_stick_coefficients;
+    /// \brief Left stick calibration measurement
+    stick_calibration_measurement l_stick_calibration_measurement;
 
-    /// \brief Right stick linearization coefficients
-    stick_coefficients r_stick_coefficients;
+    /// \brief Left stick output range
+    uint8_t l_stick_range;
+
+    /// \brief Right stick calibration measurement
+    stick_calibration_measurement r_stick_calibration_measurement;
+
+    /// \brief Right stick output range
+    uint8_t r_stick_range;
 
     /** \brief Get the configuration instance
      *
@@ -187,11 +182,13 @@ class controller_configuration {
     /** \brief Enter stick configuration mode
      *
      * \param to_calibrate Output for coefficients
+     * \param measurement Output for measurement
+     * \param range The maximum absolute value (offset from center) the calibrated stick should output
      * \param display_stick Stick to display calibration (stick not being
      * calibrated) \param get_stick Function to get stick
      */
     void calibrate_stick(
-        stick_coefficients &to_calibrate, stick &display_stick,
+        stick_coefficients &to_calibrate, stick_calibration_measurement &measurement, uint8_t range, stick &display_stick,
         std::function<void(uint16_t &, uint16_t &)> get_stick);
 
     /// \brief Erase all stored configurations

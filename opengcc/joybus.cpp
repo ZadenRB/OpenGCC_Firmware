@@ -93,7 +93,7 @@ void handle_console_request() {
     }
 
     // Collect the rest of the console request
-    for (std::size_t i = 0; i < request_len; ++i) {
+    for (int i = 0; i < request_len; ++i) {
         // Wait a max of 48us for a new item to be pushed into the RX FIFO,
         // otherwise assume we caught the middle of a command & return
         absolute_time_t timeout_at = make_timeout_time_us(48);
@@ -132,7 +132,7 @@ void handle_console_request() {
             }
             break;
         case 0x41:
-            state.origin = 0;
+            state.origin = false;
             request[0] = 0x06;
             break;
         case 0x42:
@@ -155,6 +155,14 @@ void send_mode(uint8_t mode) {
     // Copy state that could be updated from other core
     sticks sticks_copy = state.analog_sticks;
     triggers triggers_copy = state.analog_triggers;
+
+    if (mode != 0x06 && !state.center_set) {
+        state.center_set = true;
+        sticks_copy.l_stick.x = 0x7F;
+        sticks_copy.l_stick.y = 0x7F;
+        sticks_copy.r_stick.x = 0x7F;
+        sticks_copy.r_stick.y = 0x7F;
+    }
 
     // Fill tx_buf based on mode and initiate send
     switch (mode) {

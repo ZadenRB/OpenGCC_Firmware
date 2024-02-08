@@ -99,10 +99,11 @@ void read_sticks();
  * \param x_raw Raw x-axis value
  * \param y_raw Raw y-axis value
  * \param stick_coefficients Coefficients used to linearize stick
+ * \param range Maximum range around center
  * 
  * \return Stick data for use in state
  */
-stick process_raw_stick(uint16_t x_raw, uint16_t y_raw, stick_coefficients coefficients);
+stick process_raw_stick(uint16_t x_raw, uint16_t y_raw, stick_coefficients coefficients, uint8_t range);
 
 /** \brief Linearize an axis using the given coefficients
  *
@@ -117,9 +118,10 @@ double linearize_axis(uint16_t axis_raw, std::array<double, NUM_COEFFICIENTS> co
  * 
  * \param linearized_x Linearized x-axis value
  * \param linearized_y Linearized y-axis value
+ * \param range Maximum range around center
  * 
  * \return Stick data for use in state
 */
-stick remap_stick(double linearized_x, double linearized_y);
+stick remap_stick(double linearized_x, double linearized_y, uint8_t range);
 
 #endif  // MAIN_H_

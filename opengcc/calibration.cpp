@@ -20,72 +20,76 @@
 
 #include "curve_fitting.hpp"
 
-stick_calibration::stick_calibration(stick &display)
-    : current_step{0},
-      num_steps{NUM_CALIBRATION_STEPS},
-      display_stick(display),
-      expected_x_coordinates({127, 227, 127, 197, 127, 127, 127, 57, 127, 27,
-                              127, 57, 127, 127, 127, 197}),
-      expected_y_coordinates({127, 127, 127, 197, 127, 227, 127, 197, 127, 127,
-                              127, 57, 127, 27, 127, 57}) {}
+stick_calibration::stick_calibration(uint8_t range)
+    : current_step{0} {
+    uint16_t positive_cardinal = CENTER + range;
+    uint16_t negative_cardinal = CENTER - range;
+    uint16_t positive_diagonal = CENTER + (0.7 * range);
+    uint16_t negative_diagonal = CENTER - (0.7 * range);
 
-void stick_calibration::display_step() {
+    expected_measurement.x_coordinates = {CENTER, positive_cardinal, CENTER, positive_diagonal, CENTER, CENTER, CENTER, negative_diagonal, CENTER, negative_cardinal,
+                              CENTER, negative_diagonal, CENTER, CENTER, CENTER, positive_diagonal};
+    expected_measurement.y_coordinates = {CENTER, CENTER, CENTER, positive_diagonal, CENTER, positive_cardinal, CENTER, positive_diagonal, CENTER, CENTER,
+                            CENTER, negative_diagonal, CENTER, negative_cardinal, CENTER, negative_diagonal};
+}
+
+stick_calibration::stick_calibration(uint8_t range, stick_calibration_measurement actual_measurement)
+    : current_step{0},
+    actual_measurement(actual_measurement) {
+    uint16_t positive_cardinal = CENTER + range;
+    uint16_t negative_cardinal = CENTER - range;
+    uint16_t positive_diagonal = CENTER + (0.7 * range);
+    uint16_t negative_diagonal = CENTER - (0.7 * range);
+
+    expected_measurement.x_coordinates = {CENTER, positive_cardinal, CENTER, positive_diagonal, CENTER, CENTER, CENTER, negative_diagonal, CENTER, negative_cardinal,
+                              CENTER, negative_diagonal, CENTER, CENTER, CENTER, positive_diagonal};
+    expected_measurement.y_coordinates = {CENTER, CENTER, CENTER, positive_diagonal, CENTER, positive_cardinal, CENTER, positive_diagonal, CENTER, CENTER,
+                            CENTER, negative_diagonal, CENTER, negative_cardinal, CENTER, negative_diagonal};
+}
+
+void stick_calibration::display_step(stick &display_stick) {
     // Set display stick to expected x & y for current calibration step
-    display_stick.x = expected_x_coordinates[current_step];
-    display_stick.y = expected_y_coordinates[current_step];
+    display_stick.x = expected_measurement.x_coordinates[current_step];
+    display_stick.y = expected_measurement.y_coordinates[current_step];
 }
 
 void stick_calibration::undo_measurement() {
     if (current_step > 0) {
-        measured_x_coordinates.pop_back();
-        measured_y_coordinates.pop_back();
-        skipped_steps.pop_back();
         --current_step;
     }
 }
 
 void stick_calibration::record_measurement(uint16_t x, uint16_t y) {
-    if (current_step < num_steps) {
-        measured_x_coordinates.push_back(x);
-        measured_y_coordinates.push_back(y);
-        skipped_steps.push_back(false);
+    if (current_step < NUM_CALIBRATION_STEPS) {
+        actual_measurement.x_coordinates[current_step] = x;
+        actual_measurement.y_coordinates[current_step] = y;
+        actual_measurement.skipped_measurements[current_step] = false;
         ++current_step;
     }
 }
 
 void stick_calibration::skip_measurement() {
-    if (current_step < num_steps) {
-        measured_x_coordinates.push_back(0);
-        measured_y_coordinates.push_back(0);
-        skipped_steps.push_back(true);
+    if (current_step < NUM_CALIBRATION_STEPS) {
+        actual_measurement.skipped_measurements[current_step] = true;
         ++current_step;
     }
 }
 
-void stick_calibration::remove_skipped_coordinates(
-    std::vector<double> &coordinates) {
-    for (int i = coordinates.size() - 1; i >= 0; --i) {
-        if (skipped_steps[i]) {
-            coordinates[i] = coordinates.back();
-            coordinates.pop_back();
-        }
-    }
+stick_calibration_measurement stick_calibration::get_measurement() {
+    return actual_measurement;
 }
 
 stick_coefficients stick_calibration::generate_coefficients() {
     stick_coefficients ret;
 
-    remove_skipped_coordinates(measured_x_coordinates);
-    remove_skipped_coordinates(expected_x_coordinates);
-    remove_skipped_coordinates(measured_y_coordinates);
-    remove_skipped_coordinates(expected_y_coordinates);
-
-    ret.x_coefficients = fit_curve<NUM_COEFFICIENTS>(measured_x_coordinates,
-                                                     expected_x_coordinates);
-    ret.y_coefficients = fit_curve<NUM_COEFFICIENTS>(measured_y_coordinates,
-                                                     expected_y_coordinates);
+    ret.x_coefficients = fit_curve<NUM_COEFFICIENTS, NUM_CALIBRATION_STEPS>(expected_measurement.x_coordinates,
+                                                     actual_measurement.x_coordinates,
+                                                     actual_measurement.skipped_measurements);
+    ret.y_coefficients = fit_curve<NUM_COEFFICIENTS, NUM_CALIBRATION_STEPS>(expected_measurement.y_coordinates,
+                                                     actual_measurement.y_coordinates,
+                                                     actual_measurement.skipped_measurements);
 
     return ret;
 }
 
-bool stick_calibration::done() { return current_step == num_steps; }
+bool stick_calibration::done() { return current_step == NUM_CALIBRATION_STEPS; }

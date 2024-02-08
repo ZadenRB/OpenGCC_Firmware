@@ -25,7 +25,7 @@
 #include "pico/multicore.h"
 
 controller_configuration::controller_configuration() {
-    uint32_t read_page = controller_configuration::read_page();
+    int read_page = controller_configuration::read_page();
     if (read_page == -1) {
         // If there's no stored configuration, load defaults & persist
         // Set up default profile
@@ -49,16 +49,21 @@ controller_configuration::controller_configuration() {
         default_profile.r_trigger_threshold_value = TRIGGER_THRESHOLD_MIN;
 
         // Set all profiles to default
-        for (size_t i = 0; i < profiles.size(); ++i) {
+        for (int i = 0; i < profiles.size(); ++i) {
             profiles[i] = default_profile;
         }
         current_profile = 0;
 
-        // Set coefficients to zero
-        l_stick_coefficients.x_coefficients = {0, 0, 0, 0};
-        l_stick_coefficients.y_coefficients = {0, 0, 0, 0};
-        r_stick_coefficients.x_coefficients = {0, 0, 0, 0};
-        r_stick_coefficients.y_coefficients = {0, 0, 0, 0};
+        // Set coefficients and range to default
+        l_stick_calibration_measurement.x_coordinates = {};
+        l_stick_calibration_measurement.y_coordinates = {};
+        l_stick_calibration_measurement.skipped_measurements = {};
+        l_stick_range = 106;
+
+        r_stick_calibration_measurement.x_coordinates = {};
+        r_stick_calibration_measurement.y_coordinates = {};
+        r_stick_calibration_measurement.skipped_measurements = {};
+        r_stick_range = 106;
 
         // Persist
         persist();
@@ -69,12 +74,14 @@ controller_configuration::controller_configuration() {
     controller_configuration *config_in_flash =
         reinterpret_cast<controller_configuration *>(
             CONFIG_SRAM_BASE + (read_page * FLASH_PAGE_SIZE));
-    for (size_t i = 0; i < profiles.size(); ++i) {
+    for (int i = 0; i < profiles.size(); ++i) {
         profiles[i] = config_in_flash->profiles[i];
     }
     current_profile = config_in_flash->current_profile;
-    l_stick_coefficients = config_in_flash->l_stick_coefficients;
-    r_stick_coefficients = config_in_flash->r_stick_coefficients;
+    l_stick_calibration_measurement = config_in_flash->l_stick_calibration_measurement;
+    l_stick_range = config_in_flash->l_stick_range;
+    r_stick_calibration_measurement = config_in_flash->r_stick_calibration_measurement;
+    r_stick_range = config_in_flash->r_stick_range;
 }
 
 controller_configuration &controller_configuration::get_instance() {
@@ -86,8 +93,8 @@ void controller_configuration::reload_instance() {
     get_instance() = controller_configuration();
 }
 
-uint32_t controller_configuration::read_page() {
-    for (uint32_t page = 0; page < PAGES_PER_SECTOR; ++page) {
+int controller_configuration::read_page() {
+    for (int page = 0; page < PAGES_PER_SECTOR; ++page) {
         uint32_t read_address = CONFIG_SRAM_BASE + (page * FLASH_PAGE_SIZE);
         if (*reinterpret_cast<uint8_t *>(read_address) == 0xFF) {
             // Return last initialized flash (-1 if no flash is initialized)
@@ -100,13 +107,13 @@ uint32_t controller_configuration::read_page() {
     return LAST_PAGE;
 }
 
-uint32_t controller_configuration::write_page() {
+int controller_configuration::write_page() {
     return (controller_configuration::read_page() + 1) % PAGES_PER_SECTOR;
 }
 
 void controller_configuration::persist() {
-    uint32_t w_page = write_page();
-    if (w_page == 0 && read_page() != -1) {
+    int to_write = write_page();
+    if (to_write == 0 && read_page() != -1) {
         flash_range_erase(CONFIG_FLASH_BASE, FLASH_SECTOR_SIZE);
     }
 
@@ -114,7 +121,7 @@ void controller_configuration::persist() {
     uint8_t *config_bytes = reinterpret_cast<uint8_t *>(this);
     std::array<uint8_t, FLASH_PAGE_SIZE> buf = {0};
     // Fill buffer with the configuration bytes and pad with 0xFF
-    for (std::size_t i = 0; i < FLASH_PAGE_SIZE; ++i) {
+    for (int i = 0; i < FLASH_PAGE_SIZE; ++i) {
         if (i < CONFIG_SIZE) {
             buf[i] = config_bytes[i];
         } else {
@@ -123,7 +130,7 @@ void controller_configuration::persist() {
     }
 
     // Write to flash
-    flash_range_program(CONFIG_FLASH_BASE + (w_page * FLASH_PAGE_SIZE),
+    flash_range_program(CONFIG_FLASH_BASE + (to_write * FLASH_PAGE_SIZE),
                         buf.data(), FLASH_PAGE_SIZE);
 }
 
@@ -357,17 +364,17 @@ void controller_configuration::configure_triggers() {
 }
 
 void controller_configuration::calibrate_stick(
-    stick_coefficients &to_calibrate, stick &display_stick,
+    stick_coefficients &to_calibrate, stick_calibration_measurement &measurement, uint8_t range, stick &display_stick,
     std::function<void(uint16_t &, uint16_t &)> get_stick) {
     // Lock core 1 to prevent stick output from being displayed
     multicore_lockout_start_blocking();
 
-    stick_calibration calibration(display_stick);
+    stick_calibration calibration(range);
     bool buttons_released = false;
 
     while (!calibration.done()) {
         // Show current step on display stick
-        calibration.display_step();
+        calibration.display_step(display_stick);
 
         // Get buttons
         uint16_t physical_buttons = get_buttons();
@@ -407,6 +414,7 @@ void controller_configuration::calibrate_stick(
     }
 
     to_calibrate = calibration.generate_coefficients();
+    measurement = calibration.get_measurement();
 
     persist();
     multicore_lockout_end_blocking();

@@ -19,57 +19,58 @@
 #include <array>
 #include <cassert>
 #include <vector>
+#include <pico/types.h>
 
-template <std::size_t N>
+template <uint N>
 std::array<std::array<double, N>, N> convert_to_inverse(
     const std::array<std::array<double, N>, N>& in) {
     std::array<std::array<double, N>, N> ret = {};
 
     // Fill inverse with input array
     std::array<std::array<double, N>, 2 * N> inverse = {};
-    for (std::size_t r = 0; r < N; ++r) {
-        for (std::size_t c = 0; c < N; ++c) {
+    for (int r = 0; r < N; ++r) {
+        for (int c = 0; c < N; ++c) {
             inverse[c][r] = in[c][r];
         }
     }
 
     // Find inverse
-    for (std::size_t r = 0; r < N; ++r) {
-        for (std::size_t c = 0; c < 2 * N; ++c) {
+    for (int r = 0; r < N; ++r) {
+        for (int c = 0; c < 2 * N; ++c) {
             if (c == (r + N)) {
                 inverse[c][r] = 1;
             }
         }
     }
-    for (std::size_t r = N - 1; r > 0; --r) {
+    for (int r = N - 1; r > 0; --r) {
         if (inverse[0][r - 1] < inverse[0][r]) {
-            for (std::size_t c = 0; c < 2 * N; ++c) {
+            for (int c = 0; c < 2 * N; ++c) {
                 double temp = inverse[c][r];
                 inverse[c][r] = inverse[c][r - 1];
                 inverse[c][r - 1] = temp;
             }
         }
     }
-    for (std::size_t c = 0; c < N; ++c) {
-        for (std::size_t r = 0; r < N; ++r) {
+    for (int c = 0; c < N; ++c) {
+        for (int r = 0; r < N; ++r) {
             if (r != c) {
                 double temp = inverse[c][r] / inverse[c][c];
-                for (std::size_t i = 0; i < 2 * N; ++i) {
+                for (int i = 0; i < 2 * N; ++i) {
                     inverse[i][r] -= inverse[i][c] * temp;
                 }
             }
         }
     }
-    for (std::size_t r = 0; r < N; ++r) {
+    for (int r = 0; r < N; ++r) {
         double temp = inverse[r][r];
-        for (std::size_t c = 0; c < 2 * N; ++c) {
+        for (int c = 0; c < 2 * N; ++c) {
             inverse[c][r] = inverse[c][r] / temp;
         }
     }
 
     // Populate out array
-    for (std::size_t r = 0; r < N; ++r) {
-        for (std::size_t c = 0; c < N; ++c) {
+    for (int r = 0; r < N; ++r) {
+        for (int c = 0; c < N; ++c) {
             ret[c][r] = inverse[c + N][r];
         }
     }
@@ -77,30 +78,33 @@ std::array<std::array<double, N>, N> convert_to_inverse(
     return ret;
 }
 
-template <std::size_t NCoefficients>
-std::array<double, NCoefficients> fit_curve(
-    const std::vector<double>& measured_coordinates,
-    const std::vector<double>& expected_coordinates) {
-    assert(measured_coordinates.size() == expected_coordinates.size());
-    std::array<double, NCoefficients> ret = {};
-    size_t num_coordinates = measured_coordinates.size();
+template <uint num_coefficients, uint num_calibration_steps>
+std::array<double, num_coefficients> fit_curve(
+    const std::array<uint16_t, num_calibration_steps>& expected_coordinates,
+    const std::array<uint16_t, num_calibration_steps>& actual_coordinates,
+    const std::array<bool, num_calibration_steps>& skipped_coordinates) {
+    
+    std::array<double, num_coefficients> ret = {};
 
-    std::array<std::array<double, NCoefficients>, NCoefficients> a = {};
+    std::array<std::array<double, num_coefficients>, num_coefficients> a = {};
 
-    for (std::size_t i = 0; i < NCoefficients * 2 - 1; ++i) {
+    for (int i = 0; i < num_coefficients * 2 - 1; ++i) {
         double sum = 0;
-        for (double measured_coordinate : measured_coordinates) {
-            double raised_measured_coordinate = 1;
-            for (uint32_t k = 0; k < i; ++k) {
-                raised_measured_coordinate *= measured_coordinate;
+        for (int j = 0; j < num_calibration_steps; ++j) {
+            if (!skipped_coordinates[j]) {
+                double actual_coordinate = actual_coordinates[j];
+                double raised_actual_coordinate = 1;
+                for (int k = 0; k < i; ++k) {
+                    raised_actual_coordinate *= actual_coordinate;
+                }
+                sum += raised_actual_coordinate;
             }
-            sum += raised_measured_coordinate;
         }
 
         int current_col = i;
         int current_row = 0;
-        if (current_col > NCoefficients - 1) {
-            current_col = NCoefficients - 1;
+        if (current_col > num_coefficients - 1) {
+            current_col = num_coefficients - 1;
             current_row = i - current_col;
         }
 
@@ -109,32 +113,34 @@ std::array<double, NCoefficients> fit_curve(
             --current_col;
             ++current_row;
 
-            if (current_col < 0 || current_row > NCoefficients - 1) {
+            if (current_col < 0 || current_row > num_coefficients - 1) {
                 break;
             }
         }
     }
 
-    std::array<double, NCoefficients> b = {};
+    std::array<double, num_coefficients> b = {};
 
-    for (std::size_t i = 0; i < NCoefficients; ++i) {
+    for (int i = 0; i < num_coefficients; ++i) {
         double sum = 0;
-        for (std::size_t j = 0; j < num_coordinates; ++j) {
-            double raised_measured_coordinate = 1;
-            for (uint32_t k = 0; k < i; ++k) {
-                raised_measured_coordinate *= measured_coordinates[j];
+        for (int j = 0; j < num_calibration_steps; ++j) {
+            if (!skipped_coordinates[j]) {
+                double raised_actual_coordinate = 1;
+                for (int k = 0; k < i; ++k) {
+                    raised_actual_coordinate *= actual_coordinates[j];
+                }
+                sum += raised_actual_coordinate * expected_coordinates[j];
             }
-            sum += raised_measured_coordinate * expected_coordinates[j];
         }
         b[i] = sum;
     }
 
-    std::array<std::array<double, NCoefficients>, NCoefficients> inverse =
+    std::array<std::array<double, num_coefficients>, num_coefficients> inverse =
         convert_to_inverse(a);
 
-    for (std::size_t r = 0; r < NCoefficients; ++r) {
+    for (int r = 0; r < num_coefficients; ++r) {
         double value = 0;
-        for (std::size_t c = 0; c < NCoefficients; ++c) {
+        for (int c = 0; c < num_coefficients; ++c) {
             value += inverse[c][r] * b[c];
         }
         ret[r] = value;

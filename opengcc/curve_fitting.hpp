@@ -35,7 +35,7 @@
  *
  * \return Inverse of array
  */
-template <std::size_t N>
+template <uint N>
 std::array<std::array<double, N>, N> convert_to_inverse(
     const std::array<std::array<double, N>, N>& in);
 
@@ -44,24 +44,26 @@ std::array<std::array<double, N>, N> convert_to_inverse(
  *
  * Produces coefficients for a function
  * `coefficients[0]*x^0 + ... + coefficients[i]*x^i + ... + `
- * `coefficients[NCoefficients-1]*x^(NCoefficients-1)`.
+ * `coefficients[num_coefficients-1]*x^(num_coefficients-1)`.
  * Used to linearize Hall-Effect sensor output.
  *
- * \note Increasing `NCoefficients` will increase runtime of sensor
+ * \note Increasing `num_coefficients` will increase runtime of sensor
  * linearization which is run on every poll, so there is a tradeoff between
  * accuracy and performance.
  *
- * \tparam NCoefficients Number of coefficients to generate
+ * \tparam num_coefficients Number of coefficients to generate
+ * \tparam num_calibration steps Number of calibration steps
  * \param coefficients Output array for coefficients
  * \param measured_coordinates The measured input coordinates
  * \param expected_coordinates The expected output coordinates
  *
  * \return Coefficients to map measured to expected
  */
-template <std::size_t NCoefficients>
-std::array<double, NCoefficients> fit_curve(
-    const std::vector<double>& measured_coordinates,
-    const std::vector<double>& expected_coordinates);
+template <uint num_coefficients, uint num_calibration_steps>
+std::array<double, num_coefficients> fit_curve(
+    const std::array<uint16_t, num_calibration_steps>& expected_coordinates,
+    const std::array<uint16_t, num_calibration_steps>& actual_coordinates,
+    const std::array<bool, num_calibration_steps>& skipped_coordinates);
 
 #include "curve_fitting.tpp" 
 

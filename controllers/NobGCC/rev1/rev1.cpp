@@ -72,9 +72,6 @@ void setup_si7210_sensor(i2c_inst_t *i2c, uint8_t addr) {
     i2c_write_blocking(i2c, addr, SI7210_IDLE_TIME_CONFIG.data(), 2, false);
     i2c_write_blocking(i2c, addr, SI7210_BURST_CONFIG.data(), 2, false);
 
-    // 0x2D, 0x2E, 0x2F, 0x30, 0x31, 0x32
-    // 0xCA, 0xCB, 0xCC, 0xCE, 0xCF, 0xD0
-
     // Get value to write to OTP read enable byte
     uint8_t otp_enable_byte = 0;
     i2c_write_blocking(i2c, addr, &SI7210_OTP_ENABLE_ADDR, 1, true);

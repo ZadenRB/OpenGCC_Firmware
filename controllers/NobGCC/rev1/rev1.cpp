@@ -264,9 +264,9 @@ void init_triggers() {
 
     // Apply configurations
     dma_channel_configure(triggers_dma_1, &triggers_config_1,
-                          triggers_raw.data(), &adc_hw->fifo, 0xFFFFFFFF, true);
+                          triggers_raw.data(), &adc_hw->fifo, 0xFFFFFFFE, true);
     dma_channel_configure(triggers_dma_2, &triggers_config_2,
-                          triggers_raw.data(), &adc_hw->fifo, 0xFFFFFFFF,
+                          triggers_raw.data(), &adc_hw->fifo, 0xFFFFFFFE,
                           false);
 
     // Start ADC

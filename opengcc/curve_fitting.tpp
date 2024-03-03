@@ -21,57 +21,57 @@
 #include <vector>
 #include <pico/types.h>
 
-template <uint N>
-std::array<std::array<double, N>, N> convert_to_inverse(
-    const std::array<std::array<double, N>, N>& in) {
-    std::array<std::array<double, N>, N> ret = {};
+template <uint dimension>
+std::array<std::array<double, dimension>, dimension> convert_to_inverse(
+    const std::array<std::array<double, dimension>, dimension>& in) {
+    std::array<std::array<double, dimension>, dimension> ret = {};
 
     // Fill inverse with input array
-    std::array<std::array<double, N>, 2 * N> inverse = {};
-    for (int r = 0; r < N; ++r) {
-        for (int c = 0; c < N; ++c) {
+    std::array<std::array<double, dimension>, 2 * dimension> inverse = {};
+    for (int r = 0; r < dimension; ++r) {
+        for (int c = 0; c < dimension; ++c) {
             inverse[c][r] = in[c][r];
         }
     }
 
     // Find inverse
-    for (int r = 0; r < N; ++r) {
-        for (int c = 0; c < 2 * N; ++c) {
-            if (c == (r + N)) {
+    for (int r = 0; r < dimension; ++r) {
+        for (int c = 0; c < 2 * dimension; ++c) {
+            if (c == (r + dimension)) {
                 inverse[c][r] = 1;
             }
         }
     }
-    for (int r = N - 1; r > 0; --r) {
+    for (int r = dimension - 1; r > 0; --r) {
         if (inverse[0][r - 1] < inverse[0][r]) {
-            for (int c = 0; c < 2 * N; ++c) {
+            for (int c = 0; c < 2 * dimension; ++c) {
                 double temp = inverse[c][r];
                 inverse[c][r] = inverse[c][r - 1];
                 inverse[c][r - 1] = temp;
             }
         }
     }
-    for (int c = 0; c < N; ++c) {
-        for (int r = 0; r < N; ++r) {
+    for (int c = 0; c < dimension; ++c) {
+        for (int r = 0; r < dimension; ++r) {
             if (r != c) {
                 double temp = inverse[c][r] / inverse[c][c];
-                for (int i = 0; i < 2 * N; ++i) {
+                for (int i = 0; i < 2 * dimension; ++i) {
                     inverse[i][r] -= inverse[i][c] * temp;
                 }
             }
         }
     }
-    for (int r = 0; r < N; ++r) {
+    for (int r = 0; r < dimension; ++r) {
         double temp = inverse[r][r];
-        for (int c = 0; c < 2 * N; ++c) {
+        for (int c = 0; c < 2 * dimension; ++c) {
             inverse[c][r] = inverse[c][r] / temp;
         }
     }
 
     // Populate out array
-    for (int r = 0; r < N; ++r) {
-        for (int c = 0; c < N; ++c) {
-            ret[c][r] = inverse[c + N][r];
+    for (int r = 0; r < dimension; ++r) {
+        for (int c = 0; c < dimension; ++c) {
+            ret[c][r] = inverse[c + dimension][r];
         }
     }
 

@@ -29,15 +29,15 @@
 
 /** \brief Calculate the inverse of a matrix
  *
- * \tparam N Dimension of array
+ * \tparam dimension Dimension of input matrix
  * \param out Output for the inverse
- * \param in Matrix to calculate the inverse of
+ * \param in Square matrix to calculate the inverse of
  *
  * \return Inverse of array
  */
-template <uint N>
-std::array<std::array<double, N>, N> convert_to_inverse(
-    const std::array<std::array<double, N>, N>& in);
+template <uint dimension>
+std::array<std::array<double, dimension>, dimension> convert_to_inverse(
+    const std::array<std::array<double, dimension>, dimension>& in);
 
 /** \brief Generates coefficients for an polynomial to map
  * `measured_coefficients` to `expected_coordinates` via regression

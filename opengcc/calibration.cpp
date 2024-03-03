@@ -21,17 +21,7 @@
 #include "curve_fitting.hpp"
 
 stick_calibration::stick_calibration(uint8_t range)
-    : current_step{0} {
-    uint16_t positive_cardinal = CENTER + range;
-    uint16_t negative_cardinal = CENTER - range;
-    uint16_t positive_diagonal = CENTER + (0.7 * range);
-    uint16_t negative_diagonal = CENTER - (0.7 * range);
-
-    expected_measurement.x_coordinates = {CENTER, positive_cardinal, CENTER, positive_diagonal, CENTER, CENTER, CENTER, negative_diagonal, CENTER, negative_cardinal,
-                              CENTER, negative_diagonal, CENTER, CENTER, CENTER, positive_diagonal};
-    expected_measurement.y_coordinates = {CENTER, CENTER, CENTER, positive_diagonal, CENTER, positive_cardinal, CENTER, positive_diagonal, CENTER, CENTER,
-                            CENTER, negative_diagonal, CENTER, negative_cardinal, CENTER, negative_diagonal};
-}
+    : stick_calibration::stick_calibration(range, {}) {}
 
 stick_calibration::stick_calibration(uint8_t range, stick_calibration_measurement actual_measurement)
     : current_step{0},

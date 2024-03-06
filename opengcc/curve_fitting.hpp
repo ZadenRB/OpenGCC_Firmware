@@ -65,6 +65,6 @@ std::array<double, num_coefficients> fit_curve(
     const std::array<uint16_t, num_calibration_steps>& actual_coordinates,
     const std::array<bool, num_calibration_steps>& skipped_coordinates);
 
-#include "curve_fitting.tpp" 
+#include "curve_fitting.tpp"
 
 #endif  // CURVE_FITTING_H_

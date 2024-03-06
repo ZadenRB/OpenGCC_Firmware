@@ -22,8 +22,8 @@
 #include <array>
 #include <functional>
 
-#include "hardware/flash.h"
 #include "calibration.hpp"
+#include "hardware/flash.h"
 #include "state.hpp"
 
 /** \file configuration.hpp
@@ -39,16 +39,15 @@
 
 /// \brief Enumeration of trigger modes
 enum trigger_mode : uint {
-    both,          ///< Analog and digital output (OEM behavior)
-    digital_only,  ///< Digital output only
-    analog_only,   ///< Analog output only
-    trigger_plug,  ///< Analog output to threshold, then digital output only
-    analog_on_digital,  ///< Analog output only on digital press
-    both_on_digital,    ///< Analog and digital output on digital press
-    analog_multiplied,  ///< Analog and digital output, analog value scaled up
-    last_trigger_mode =
-        analog_multiplied,     ///< Set to last value of enumeration
-    first_trigger_mode = both  ///< Set to first value of enumeration
+  both,               ///< Analog and digital output (OEM behavior)
+  digital_only,       ///< Digital output only
+  analog_only,        ///< Analog output only
+  trigger_plug,       ///< Analog output to threshold, then digital output only
+  analog_on_digital,  ///< Analog output only on digital press
+  both_on_digital,    ///< Analog and digital output on digital press
+  analog_multiplied,  ///< Analog and digital output, analog value scaled up
+  last_trigger_mode = analog_multiplied,  ///< Set to last value of enumeration
+  first_trigger_mode = both               ///< Set to first value of enumeration
 };
 
 /// \brief Minimum value for trigger threshold, set to Melee Z shield value
@@ -69,20 +68,20 @@ constexpr float TRIGGER_MULTIPLIER_B = 0.3875f;
  * calibrated the same for a given controller.
  */
 struct configuration_profile {
-    /// \brief Button mappings
-    std::array<uint8_t, 13> mappings;
+  /// \brief Button mappings
+  std::array<uint8_t, 13> mappings;
 
-    /// \brief Left trigger mode
-    trigger_mode l_trigger_mode;
+  /// \brief Left trigger mode
+  trigger_mode l_trigger_mode;
 
-    /// \brief Left trigger threshold
-    uint8_t l_trigger_threshold_value;
+  /// \brief Left trigger threshold
+  uint8_t l_trigger_threshold_value;
 
-    /// \brief Right trigger mode
-    trigger_mode r_trigger_mode;
+  /// \brief Right trigger mode
+  trigger_mode r_trigger_mode;
 
-    /// \brief Right trigger threshold
-    uint8_t r_trigger_threshold_value;
+  /// \brief Right trigger threshold
+  uint8_t r_trigger_threshold_value;
 };
 
 /** \brief Current controller configuration
@@ -90,96 +89,96 @@ struct configuration_profile {
  * \note Implemented as a singleton
  */
 class controller_configuration {
-   private:
-    controller_configuration();
-    controller_configuration &operator=(controller_configuration &&) = default;
+ private:
+  controller_configuration();
+  controller_configuration &operator=(controller_configuration &&) = default;
 
-    static int read_page();
-    static int write_page();
+  static int read_page();
+  static int write_page();
 
-   public:
-    /// \brief Profiles
-    std::array<configuration_profile, 2> profiles;
+ public:
+  /// \brief Profiles
+  std::array<configuration_profile, 2> profiles;
 
-    /// \brief Current profile
-    size_t current_profile;
+  /// \brief Current profile
+  size_t current_profile;
 
-    /// \brief Left stick calibration measurement
-    stick_calibration_measurement l_stick_calibration_measurement;
+  /// \brief Left stick calibration measurement
+  stick_calibration_measurement l_stick_calibration_measurement;
 
-    /// \brief Left stick output range
-    uint8_t l_stick_range;
+  /// \brief Left stick output range
+  uint8_t l_stick_range;
 
-    /// \brief Right stick calibration measurement
-    stick_calibration_measurement r_stick_calibration_measurement;
+  /// \brief Right stick calibration measurement
+  stick_calibration_measurement r_stick_calibration_measurement;
 
-    /// \brief Right stick output range
-    uint8_t r_stick_range;
+  /// \brief Right stick output range
+  uint8_t r_stick_range;
 
-    /** \brief Get the configuration instance
+  /** \brief Get the configuration instance
      *
      * \return The controller's configuration
      */
-    static controller_configuration &get_instance();
+  static controller_configuration &get_instance();
 
-    /** \brief Reload the configuration from flash/defaults
+  /** \brief Reload the configuration from flash/defaults
      *
      * \note Should only be used if the last sector of flash, which contains
      * configurations, is written to without updating the configuration in
      * memory accordingly.
      */
-    static void reload_instance();
+  static void reload_instance();
 
-    controller_configuration(const controller_configuration &) = delete;
-    controller_configuration(const controller_configuration &&) = delete;
-    controller_configuration &operator=(const controller_configuration &) =
-        delete;
+  controller_configuration(const controller_configuration &) = delete;
+  controller_configuration(const controller_configuration &&) = delete;
+  controller_configuration &operator=(const controller_configuration &) =
+      delete;
 
-    /// \brief Persist the current configuration to flash
-    void persist();
+  /// \brief Persist the current configuration to flash
+  void persist();
 
-    /** \brief Get a mapping by index for current profile
+  /** \brief Get a mapping by index for current profile
      *
      * \param index index of mapping to get
      *
      * \return Mapping for given index in the current profile
      */
-    uint8_t mapping(size_t index);
+  uint8_t mapping(size_t index);
 
-    /** \brief Left trigger mode for current profile
+  /** \brief Left trigger mode for current profile
      *
      * \return The left trigger mode
      */
-    trigger_mode l_trigger_mode();
+  trigger_mode l_trigger_mode();
 
-    /** \brief Left trigger threshold value for current profile
+  /** \brief Left trigger threshold value for current profile
      *
      * \return The left trigger threshold value
      */
-    uint8_t l_trigger_threshold_value();
+  uint8_t l_trigger_threshold_value();
 
-    /** \brief Right trigger mode for current profile
+  /** \brief Right trigger mode for current profile
      *
      * \return The right trigger mode
      */
-    trigger_mode r_trigger_mode();
+  trigger_mode r_trigger_mode();
 
-    /** \brief Right trigger threshold value for current profile
+  /** \brief Right trigger threshold value for current profile
      *
      * \return The right trigger threshold value
      */
-    uint8_t r_trigger_threshold_value();
+  uint8_t r_trigger_threshold_value();
 
-    /// \brief Set the current profile to the given one
-    void select_profile(size_t profile);
+  /// \brief Set the current profile to the given one
+  void select_profile(size_t profile);
 
-    /// \brief Enter remap mode
-    void swap_mappings();
+  /// \brief Enter remap mode
+  void swap_mappings();
 
-    /// \brief Enter trigger configuration mode
-    void configure_triggers();
+  /// \brief Enter trigger configuration mode
+  void configure_triggers();
 
-    /** \brief Enter stick configuration mode
+  /** \brief Enter stick configuration mode
      *
      * \param range_out Output for range
      * \param coefficients_out Output for coefficients
@@ -188,12 +187,13 @@ class controller_configuration {
      * calibrated)
      * \param get_stick Function to get stick
      */
-    void configure_stick(
-        uint8_t &range_out, stick_coefficients &coefficients_out, stick_calibration_measurement &measurement_out, stick &display_stick,
-        std::function<void(uint16_t &, uint16_t &)> get_stick);
+  void configure_stick(uint8_t &range_out, stick_coefficients &coefficients_out,
+                       stick_calibration_measurement &measurement_out,
+                       stick &display_stick,
+                       std::function<void(uint16_t &, uint16_t &)> get_stick);
 
-    /// \brief Erase all stored configurations
-    static void factory_reset();
+  /// \brief Erase all stored configurations
+  static void factory_reset();
 };
 
 /// \brief Flash address of first possible configuration

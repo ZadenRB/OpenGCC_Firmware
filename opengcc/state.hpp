@@ -19,10 +19,10 @@
 #ifndef STATE_H_
 #define STATE_H_
 
+#include <array>
+
 #include "hardware/pio.h"
 #include "pico/time.h"
-
-#include <array>
 
 /** \file state.hpp
  * \brief Controller's volatile state
@@ -81,73 +81,73 @@ constexpr int NUM_COEFFICIENTS = 4;
 
 /// \brief Calibration points for x & y axis of an analog stick.
 struct stick_coefficients {
-    /// \brief Coefficients for x-axis linearization
-    std::array<double, NUM_COEFFICIENTS> x_coefficients;
+  /// \brief Coefficients for x-axis linearization
+  std::array<double, NUM_COEFFICIENTS> x_coefficients;
 
-    /// \brief Coefficients for y axis of linearization
-    std::array<double, NUM_COEFFICIENTS> y_coefficients;
+  /// \brief Coefficients for y axis of linearization
+  std::array<double, NUM_COEFFICIENTS> y_coefficients;
 };
 
 /// \brief Grouping of axes for a single analog stick
 struct stick {
-    /// \brief X-axis
-    uint8_t x;
-    /// \brief Y-axis
-    uint8_t y;
+  /// \brief X-axis
+  uint8_t x;
+  /// \brief Y-axis
+  uint8_t y;
 };
 
 /// \brief Grouping of analog sticks
 struct sticks {
-    /// \brief State of left stick
-    stick l_stick;
-    /// \brief State of right stick
-    stick r_stick;
+  /// \brief State of left stick
+  stick l_stick;
+  /// \brief State of right stick
+  stick r_stick;
 };
 
 /// \brief Grouping of analog triggers
 struct triggers {
-    /// \brief state of left trigger
-    uint8_t l_trigger;
-    /// \brief state of right trigger
-    uint8_t r_trigger;
+  /// \brief state of left trigger
+  uint8_t l_trigger;
+  /// \brief state of right trigger
+  uint8_t r_trigger;
 };
 
 /// \brief Current controller state
 struct controller_state {
-    /// \brief State of digital inputs
-    uint16_t buttons = 0;
-    /// \brief Whether left trigger digital is pressed (post remap)
-    bool lt_pressed = false;
-    /// \brief Whether right trigger digital is pressed (post remap)
-    bool rt_pressed = false;
-    /// \brief Calibration coefficients for left stick
-    stick_coefficients l_stick_coefficients;
-    /// \brief Calibration coefficients for right stick
-    stick_coefficients r_stick_coefficients;
-    /// \brief State of sticks
-    sticks analog_sticks;
-    /// \brief State of triggers (analog)
-    triggers analog_triggers;
-    /// \brief `true` if origin has not been set, `false` if it has
-    bool origin = true;
-    /// \brief `false` if stick and trigger centers have not been set, `true` if they have
-    bool center_set = false;
-    /// \brief Left trigger center value, used to offset readings
-    uint8_t l_trigger_center = 0;
-    /// \brief Right trigger center value, used to offset readings
-    uint8_t r_trigger_center = 0;
-    /// \brief `true` if safe mode is active, `false` if it is not
-    bool safe_mode = true;
-    /// \brief State of digital inputs of the in-progress combo
-    uint16_t active_combo = 0;
-    /// \brief Alarm ID for triggering a combo
-    absolute_time_t combo_trigger_timestamp = nil_time;
+  /// \brief State of digital inputs
+  uint16_t buttons = 0;
+  /// \brief Whether left trigger digital is pressed (post remap)
+  bool lt_pressed = false;
+  /// \brief Whether right trigger digital is pressed (post remap)
+  bool rt_pressed = false;
+  /// \brief Calibration coefficients for left stick
+  stick_coefficients l_stick_coefficients;
+  /// \brief Calibration coefficients for right stick
+  stick_coefficients r_stick_coefficients;
+  /// \brief State of sticks
+  sticks analog_sticks;
+  /// \brief State of triggers (analog)
+  triggers analog_triggers;
+  /// \brief `true` if origin has not been set, `false` if it has
+  bool origin = true;
+  /// \brief `false` if stick and trigger centers have not been set, `true` if they have
+  bool center_set = false;
+  /// \brief Left trigger center value, used to offset readings
+  uint8_t l_trigger_center = 0;
+  /// \brief Right trigger center value, used to offset readings
+  uint8_t r_trigger_center = 0;
+  /// \brief `true` if safe mode is active, `false` if it is not
+  bool safe_mode = true;
+  /// \brief State of digital inputs of the in-progress combo
+  uint16_t active_combo = 0;
+  /// \brief Alarm ID for triggering a combo
+  absolute_time_t combo_trigger_timestamp = nil_time;
 
-    /// \brief Max out triggers for 1.5 seconds to indicate an alert
-    void display_alert();
+  /// \brief Max out triggers for 1.5 seconds to indicate an alert
+  void display_alert();
 
-    /// \brief Toggle safe mode
-    void toggle_safe_mode();
+  /// \brief Toggle safe mode
+  void toggle_safe_mode();
 };
 
 /** \brief Global state

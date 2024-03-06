@@ -21,8 +21,8 @@
 
 #include <array>
 
-#include "controller.hpp"
 #include "configuration.hpp"
+#include "controller.hpp"
 #include "state.hpp"
 
 /** \file main.hpp
@@ -103,7 +103,8 @@ void read_sticks();
  * 
  * \return Stick data for use in state
  */
-stick process_raw_stick(uint16_t x_raw, uint16_t y_raw, stick_coefficients coefficients, uint8_t range);
+stick process_raw_stick(uint16_t x_raw, uint16_t y_raw,
+                        stick_coefficients coefficients, uint8_t range);
 
 /** \brief Linearize an axis using the given coefficients
  *
@@ -112,7 +113,8 @@ stick process_raw_stick(uint16_t x_raw, uint16_t y_raw, stick_coefficients coeff
  *
  * \return Linearized axis value
  */
-double linearize_axis(uint16_t axis_raw, std::array<double, NUM_COEFFICIENTS> coefficients);
+double linearize_axis(uint16_t axis_raw,
+                      std::array<double, NUM_COEFFICIENTS> coefficients);
 
 /** \brief Remap linearized stick data for notches and cardinals
  * 

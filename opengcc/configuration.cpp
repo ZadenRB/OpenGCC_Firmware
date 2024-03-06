@@ -25,7 +25,7 @@
 #include "pico/multicore.h"
 
 controller_configuration::controller_configuration() {
-    uint32_t read_page = controller_configuration::read_page();
+    int read_page = controller_configuration::read_page();
     if (read_page == -1) {
         // If there's no stored configuration, load defaults & persist
         // Set up default profile
@@ -49,16 +49,21 @@ controller_configuration::controller_configuration() {
         default_profile.r_trigger_threshold_value = TRIGGER_THRESHOLD_MIN;
 
         // Set all profiles to default
-        for (size_t i = 0; i < profiles.size(); ++i) {
+        for (int i = 0; i < profiles.size(); ++i) {
             profiles[i] = default_profile;
         }
         current_profile = 0;
 
-        // Set coefficients to zero
-        l_stick_coefficients.x_coefficients = {0, 0, 0, 0};
-        l_stick_coefficients.y_coefficients = {0, 0, 0, 0};
-        r_stick_coefficients.x_coefficients = {0, 0, 0, 0};
-        r_stick_coefficients.y_coefficients = {0, 0, 0, 0};
+        // Set coefficients and range to default
+        l_stick_calibration_measurement.x_coordinates = {};
+        l_stick_calibration_measurement.y_coordinates = {};
+        l_stick_calibration_measurement.skipped_measurements = {};
+        l_stick_range = 106;
+
+        r_stick_calibration_measurement.x_coordinates = {};
+        r_stick_calibration_measurement.y_coordinates = {};
+        r_stick_calibration_measurement.skipped_measurements = {};
+        r_stick_range = 106;
 
         // Persist
         persist();
@@ -69,12 +74,14 @@ controller_configuration::controller_configuration() {
     controller_configuration *config_in_flash =
         reinterpret_cast<controller_configuration *>(
             CONFIG_SRAM_BASE + (read_page * FLASH_PAGE_SIZE));
-    for (size_t i = 0; i < profiles.size(); ++i) {
+    for (int i = 0; i < profiles.size(); ++i) {
         profiles[i] = config_in_flash->profiles[i];
     }
     current_profile = config_in_flash->current_profile;
-    l_stick_coefficients = config_in_flash->l_stick_coefficients;
-    r_stick_coefficients = config_in_flash->r_stick_coefficients;
+    l_stick_calibration_measurement = config_in_flash->l_stick_calibration_measurement;
+    l_stick_range = config_in_flash->l_stick_range;
+    r_stick_calibration_measurement = config_in_flash->r_stick_calibration_measurement;
+    r_stick_range = config_in_flash->r_stick_range;
 }
 
 controller_configuration &controller_configuration::get_instance() {
@@ -86,8 +93,8 @@ void controller_configuration::reload_instance() {
     get_instance() = controller_configuration();
 }
 
-uint32_t controller_configuration::read_page() {
-    for (uint32_t page = 0; page < PAGES_PER_SECTOR; ++page) {
+int controller_configuration::read_page() {
+    for (int page = 0; page < PAGES_PER_SECTOR; ++page) {
         uint32_t read_address = CONFIG_SRAM_BASE + (page * FLASH_PAGE_SIZE);
         if (*reinterpret_cast<uint8_t *>(read_address) == 0xFF) {
             // Return last initialized flash (-1 if no flash is initialized)
@@ -100,13 +107,13 @@ uint32_t controller_configuration::read_page() {
     return LAST_PAGE;
 }
 
-uint32_t controller_configuration::write_page() {
+int controller_configuration::write_page() {
     return (controller_configuration::read_page() + 1) % PAGES_PER_SECTOR;
 }
 
 void controller_configuration::persist() {
-    uint32_t w_page = write_page();
-    if (w_page == 0 && read_page() != -1) {
+    int to_write = write_page();
+    if (to_write == 0 && read_page() != -1) {
         flash_range_erase(CONFIG_FLASH_BASE, FLASH_SECTOR_SIZE);
     }
 
@@ -114,7 +121,7 @@ void controller_configuration::persist() {
     uint8_t *config_bytes = reinterpret_cast<uint8_t *>(this);
     std::array<uint8_t, FLASH_PAGE_SIZE> buf = {0};
     // Fill buffer with the configuration bytes and pad with 0xFF
-    for (std::size_t i = 0; i < FLASH_PAGE_SIZE; ++i) {
+    for (int i = 0; i < FLASH_PAGE_SIZE; ++i) {
         if (i < CONFIG_SIZE) {
             buf[i] = config_bytes[i];
         } else {
@@ -123,7 +130,7 @@ void controller_configuration::persist() {
     }
 
     // Write to flash
-    flash_range_program(CONFIG_FLASH_BASE + (w_page * FLASH_PAGE_SIZE),
+    flash_range_program(CONFIG_FLASH_BASE + (to_write * FLASH_PAGE_SIZE),
                         buf.data(), FLASH_PAGE_SIZE);
 }
 
@@ -250,7 +257,7 @@ void controller_configuration::configure_triggers() {
         // Get buttons
         uint16_t physical_buttons = get_buttons();
         state.buttons =
-            physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
+            (physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN)) & ~((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
 
         // Quit if combo is pressed
         if (physical_buttons == ((1 << START) | (1 << X) | (1 << Z))) {
@@ -342,7 +349,7 @@ void controller_configuration::configure_triggers() {
                 *threshold = (TRIGGER_THRESHOLD_MIN - 1) +
                              (new_threshold - TRIGGER_THRESHOLD_MAX);
             } else {
-                *threshold = static_cast<uint8_t>(new_threshold);
+                *threshold = new_threshold;
             }
 
             // Display mode on left trigger & offset on right trigger
@@ -356,18 +363,85 @@ void controller_configuration::configure_triggers() {
     }
 }
 
-void controller_configuration::calibrate_stick(
-    stick_coefficients &to_calibrate, stick &display_stick,
-    std::function<void(uint16_t &, uint16_t &)> get_stick) {
+void controller_configuration::configure_stick(uint8_t &range_out, stick_coefficients &coefficients_out, stick_calibration_measurement &measurement_out, stick &display_stick, std::function<void(uint16_t &, uint16_t &)> get_stick) {
     // Lock core 1 to prevent stick output from being displayed
     multicore_lockout_start_blocking();
 
-    stick_calibration calibration(display_stick);
     bool buttons_released = false;
+
+    while (true) {
+        // Get buttons
+        uint16_t physical_buttons = get_buttons();
+        state.buttons =
+            physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
+
+        // Move onto calibration when Z is pressed
+        if (physical_buttons == (1 << Z)) {
+            state.analog_triggers.l_trigger = 0;
+            break;
+        }
+        
+        // Save and exit when A is pressed
+        if (physical_buttons == (1 << A)) {
+            state.analog_triggers.l_trigger = 0;
+            stick_calibration calibration(range_out, measurement_out);
+            coefficients_out = calibration.generate_coefficients();
+            persist();
+            multicore_lockout_end_blocking();
+            state.display_alert();
+            return;
+        }
+
+        // Wait for buttons to be released if they haven't been
+        if (!buttons_released) {
+            buttons_released = physical_buttons == 0;
+            if (buttons_released) {
+                busy_wait_ms(DEBOUNCE_TIME);
+            }
+            continue;
+        }
+
+        // Wait for buttons to be released whenever a combo is pressed
+        if ((physical_buttons & ((1 << A) | (1 << DPAD_UP) | (1 << DPAD_RIGHT) | (1 << DPAD_DOWN) | (1 << DPAD_LEFT))) != 0) {
+            buttons_released = false;
+        }
+
+        int new_range = range_out;
+        // Update range based
+        switch (physical_buttons) {
+            case (1 << DPAD_UP):
+                new_range += 1;
+                break;
+            case (1 << DPAD_RIGHT):
+                new_range += 10;
+                break;
+            case (1 << DPAD_DOWN):
+                new_range -= 1;
+                break;
+            case (1 << DPAD_LEFT):
+                new_range -= 10;
+                break;
+        }
+
+        // Wrap range
+        if (new_range < MIN_RANGE) {
+            range_out = (MAX_RANGE + 1) - (MIN_RANGE - new_range);
+        } else if (new_range > MAX_RANGE) {
+            range_out = (MIN_RANGE - 1) + (new_range - MAX_RANGE);
+        } else {
+            range_out = new_range;
+        }
+
+        // Display range on left trigger
+        state.analog_triggers.l_trigger = range_out;
+    }
+
+    stick_calibration calibration(range_out);
+    buttons_released = false;
 
     while (!calibration.done()) {
         // Show current step on display stick
-        calibration.display_step();
+        calibration.display_step(display_stick);
 
         // Get buttons
         uint16_t physical_buttons = get_buttons();
@@ -406,7 +480,8 @@ void controller_configuration::calibrate_stick(
         }
     }
 
-    to_calibrate = calibration.generate_coefficients();
+    coefficients_out = calibration.generate_coefficients();
+    measurement_out = calibration.get_measurement();
 
     persist();
     multicore_lockout_end_blocking();

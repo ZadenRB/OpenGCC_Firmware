@@ -23,7 +23,10 @@
 #ifndef REV1_H_
 #define REV1_H_
 
+#include "hardware/i2c.h"
 #include "pico/types.h"
+
+#include <array>
 
 /// \brief D-pad left pin
 constexpr uint DPAD_LEFT_PIN = 0;
@@ -94,5 +97,51 @@ constexpr uint16_t PHYSICAL_BUTTONS_MASK =
     (1 << DPAD_LEFT_PIN) | (1 << DPAD_RIGHT_PIN) | (1 << DPAD_DOWN_PIN) | (1 << DPAD_UP_PIN) |
     (1 << Z_PIN) | (1 << RT_DIGITAL_PIN) | (1 << LT_DIGITAL_PIN) | (1 << A_PIN) | (1 << B_PIN) |
     (1 << X_PIN) | (1 << Y_PIN) | (1 << START_PIN);
+
+// I2C addresses of sensors for X & Y addresses
+constexpr uint32_t X_I2C_ADDR = 0x32;
+constexpr uint32_t Y_I2C_ADDR = 0x33;
+
+// Constants to transfer 0/1 via DMA
+constexpr uint32_t ZERO = 0x0;
+constexpr uint32_t ONE = 0x1;
+
+// Si7210 configuration data
+constexpr uint8_t SI7210_START_ADDR = 0xC4;
+constexpr uint8_t SI7210_AUTO_INCREMENT_ADDR = 0xC5;
+constexpr uint8_t SI7210_A0_ADDR = 0xCA;
+constexpr uint8_t SI7210_A1_ADDR = 0xCB;
+constexpr uint8_t SI7210_A2_ADDR = 0xCC;
+constexpr uint8_t SI7210_A3_ADDR = 0xCE;
+constexpr uint8_t SI7210_A4_ADDR = 0xCF;
+constexpr uint8_t SI7210_A5_ADDR = 0xD0;
+constexpr uint8_t SI7210_OTP_ADDR_ADDR = 0xE1;
+constexpr uint8_t SI7210_OTP_DATA_ADDR = 0xE2;
+constexpr uint8_t SI7210_OTP_ENABLE_ADDR = 0xE3;
+
+constexpr std::array<uint8_t, 2> SI7210_WAKEUP_CONFIG = {0xC0, 0x00};
+constexpr std::array<uint8_t, 2> SI7210_IDLE_CONFIG = {0xC9, 0xFE};
+constexpr std::array<uint8_t, 2> SI7210_IDLE_TIME_CONFIG = {0xC8, 0x00};
+constexpr std::array<uint8_t, 2> SI7210_BURST_CONFIG = {0xCD, 0x26};
+constexpr std::array<uint8_t, 2> SI7210_READ_A0_CONFIG = {SI7210_OTP_ADDR_ADDR, 0x2D};
+constexpr std::array<uint8_t, 2> SI7210_READ_A1_CONFIG = {SI7210_OTP_ADDR_ADDR, 0x2E};
+constexpr std::array<uint8_t, 2> SI7210_READ_A2_CONFIG = {SI7210_OTP_ADDR_ADDR, 0x2F};
+constexpr std::array<uint8_t, 2> SI7210_READ_A3_CONFIG = {SI7210_OTP_ADDR_ADDR, 0x30};
+constexpr std::array<uint8_t, 2> SI7210_READ_A4_CONFIG = {SI7210_OTP_ADDR_ADDR, 0x31};
+constexpr std::array<uint8_t, 2> SI7210_READ_A5_CONFIG = {SI7210_OTP_ADDR_ADDR, 0x32};
+
+constexpr std::array<uint16_t, 3> SI7210_READ_DATA_COMMANDS = {
+    I2C_IC_DATA_CMD_RESTART_BITS | 0xC1,
+    I2C_IC_DATA_CMD_RESTART_BITS | I2C_IC_DATA_CMD_CMD_BITS,
+    I2C_IC_DATA_CMD_STOP_BITS | I2C_IC_DATA_CMD_CMD_BITS
+};
+
+// DMA control block
+struct control_block {
+    const volatile void *read_address;
+    volatile void *write_address;
+    uint transfer_count;
+    uint32_t control_register;
+};
 
 #endif // REV1_H_ 

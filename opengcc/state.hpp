@@ -22,6 +22,8 @@
 #include "hardware/pio.h"
 #include "pico/time.h"
 
+#include <array>
+
 /** \file state.hpp
  * \brief Controller's volatile state
  *
@@ -71,11 +73,26 @@ constexpr uint ALWAYS_HIGH = 7;
 /// \brief Origin bit in controller state
 constexpr uint ORIGIN = 13;
 
+/// \brief Center point of analog stick
+constexpr uint16_t CENTER = 127;
+
+/// \brief Number of coefficients for stick linearization
+constexpr int NUM_COEFFICIENTS = 4;
+
+/// \brief Calibration points for x & y axis of an analog stick.
+struct stick_coefficients {
+    /// \brief Coefficients for x-axis linearization
+    std::array<double, NUM_COEFFICIENTS> x_coefficients;
+
+    /// \brief Coefficients for y axis of linearization
+    std::array<double, NUM_COEFFICIENTS> y_coefficients;
+};
+
 /// \brief Grouping of axes for a single analog stick
 struct stick {
-    /// \brief x-axis
+    /// \brief X-axis
     uint8_t x;
-    /// \brief Y axis
+    /// \brief Y-axis
     uint8_t y;
 };
 
@@ -103,12 +120,22 @@ struct controller_state {
     bool lt_pressed = false;
     /// \brief Whether right trigger digital is pressed (post remap)
     bool rt_pressed = false;
+    /// \brief Calibration coefficients for left stick
+    stick_coefficients l_stick_coefficients;
+    /// \brief Calibration coefficients for right stick
+    stick_coefficients r_stick_coefficients;
     /// \brief State of sticks
     sticks analog_sticks;
     /// \brief State of triggers (analog)
     triggers analog_triggers;
     /// \brief `true` if origin has not been set, `false` if it has
     bool origin = true;
+    /// \brief `false` if stick and trigger centers have not been set, `true` if they have
+    bool center_set = false;
+    /// \brief Left trigger center value, used to offset readings
+    uint8_t l_trigger_center = 0;
+    /// \brief Right trigger center value, used to offset readings
+    uint8_t r_trigger_center = 0;
     /// \brief `true` if safe mode is active, `false` if it is not
     bool safe_mode = true;
     /// \brief State of digital inputs of the in-progress combo

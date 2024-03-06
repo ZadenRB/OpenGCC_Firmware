@@ -21,6 +21,7 @@
 #include <cmath>
 
 #include CONFIG_H
+#include "calibration.hpp"
 #include "configuration.hpp"
 #include "joybus.hpp"
 #include "state.hpp"
@@ -56,6 +57,9 @@ int main() {
             break;
     }
 
+    state.l_stick_coefficients = stick_calibration(config.l_stick_range, config.l_stick_calibration_measurement).generate_coefficients();
+    state.r_stick_coefficients = stick_calibration(config.r_stick_range, config.r_stick_calibration_measurement).generate_coefficients();
+    
     // Read buttons, sticks, and triggers once before starting communication
     read_digital(startup_buttons);
     read_triggers();
@@ -189,11 +193,11 @@ void execute_combo() {
             config.configure_triggers();
             break;
         case (1 << START) | (1 << X) | (1 << LT_DIGITAL):
-            config.calibrate_stick(config.l_stick_coefficients, state.analog_sticks.r_stick,
+            config.configure_stick(config.l_stick_range, state.l_stick_coefficients, config.l_stick_calibration_measurement, state.analog_sticks.r_stick,
                                    get_left_stick);
             break;
         case (1 << START) | (1 << X) | (1 << RT_DIGITAL):
-            config.calibrate_stick(config.r_stick_coefficients, state.analog_sticks.l_stick,
+            config.configure_stick(config.r_stick_range, state.r_stick_coefficients, config.r_stick_calibration_measurement, state.analog_sticks.l_stick,
                                    get_right_stick);
             break;
         case (1 << START) | (1 << Y) | (1 << B):
@@ -218,19 +222,23 @@ void analog_main() {
 void read_triggers() {
     controller_configuration &config = controller_configuration::get_instance();
 
-    uint8_t lt, rt;
+    uint8_t l_trigger, r_trigger;
 
     // Read trigger values
-    get_triggers(lt, rt);
+    get_triggers(l_trigger, r_trigger);
+
+    // Adjust trigger values based on center values
+    l_trigger -= std::min(l_trigger, state.l_trigger_center);
+    r_trigger -= std::min(r_trigger, state.r_trigger_center);
 
     // Apply analog trigger modes
     triggers new_triggers;
     new_triggers.l_trigger = apply_trigger_mode_analog(
-        lt, config.l_trigger_threshold_value(), state.lt_pressed,
+        l_trigger, config.l_trigger_threshold_value(), state.lt_pressed,
         config.mapping(LT_DIGITAL) == LT_DIGITAL, config.l_trigger_mode(),
         config.r_trigger_mode());
     new_triggers.r_trigger = apply_trigger_mode_analog(
-        rt, config.r_trigger_threshold_value(), state.rt_pressed,
+        r_trigger, config.r_trigger_threshold_value(), state.rt_pressed,
         config.mapping(RT_DIGITAL) == RT_DIGITAL, config.r_trigger_mode(),
         config.l_trigger_mode());
     state.analog_triggers = new_triggers;
@@ -290,26 +298,22 @@ void read_sticks() {
     controller_configuration &config = controller_configuration::get_instance();
 
     uint16_t lx, ly, rx, ry;
-
-    // Read sticks
     get_sticks(lx, ly, rx, ry);
 
-    // Linearize values
     sticks new_sticks;
-    new_sticks.l_stick = process_raw_stick(lx, ly, config.l_stick_coefficients);
-    new_sticks.r_stick = process_raw_stick(rx, ry, config.r_stick_coefficients);
+    new_sticks.l_stick = process_raw_stick(lx, ly, state.l_stick_coefficients, config.l_stick_range);
+    new_sticks.r_stick = process_raw_stick(rx, ry, state.r_stick_coefficients, config.r_stick_range);
     state.analog_sticks = new_sticks;
 }
 
-stick process_raw_stick(uint16_t x_raw, uint16_t y_raw, stick_coefficients coefficients) {
+stick process_raw_stick(uint16_t x_raw, uint16_t y_raw, stick_coefficients coefficients, uint8_t range) {
     double linearized_x = linearize_axis(x_raw, coefficients.x_coefficients);
     double linearized_y = linearize_axis(y_raw, coefficients.y_coefficients);
 
-    return remap_stick(linearized_x, linearized_y);
+    return remap_stick(linearized_x, linearized_y, range);
 }
 
 double linearize_axis(uint16_t axis_raw, std::array<double, NUM_COEFFICIENTS> axis_coefficients) {
-    // Linearize axis
     double linearized_axis = 0;
     for (int i = 0; i < NUM_COEFFICIENTS; ++i) {
         double raised_raw = 1;
@@ -322,18 +326,16 @@ double linearize_axis(uint16_t axis_raw, std::array<double, NUM_COEFFICIENTS> ax
     return linearized_axis;
 }
 
-stick remap_stick(double linearized_x, double linearized_y) {
-    uint8_t x = round(linearized_x);
-    uint8_t y = round(linearized_y);
+stick remap_stick(double linearized_x, double linearized_y, uint8_t range) {
+    controller_configuration &config = controller_configuration::get_instance();
+    double min_value = CENTER - range;
+    double max_value = CENTER + range;
 
-    if (abs(x) >= 80 && abs(y) <= 6) {
-        y = 0;
-    } else if (abs(y) >= 80 && abs(x) <= 6) {
-        x = 0;
-    }
+    int x = round(std::clamp(linearized_x, min_value, max_value));
+    int y = round(std::clamp(linearized_y, min_value, max_value));
 
     return stick {
-        x: x,
-        y: y
+        x: static_cast<uint8_t>(x),
+        y: static_cast<uint8_t>(y)
     };
 }

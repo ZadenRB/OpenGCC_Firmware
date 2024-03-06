@@ -257,7 +257,7 @@ void controller_configuration::configure_triggers() {
         // Get buttons
         uint16_t physical_buttons = get_buttons();
         state.buttons =
-            physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN) & ~((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
+            (physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN)) & ~((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
 
         // Quit if combo is pressed
         if (physical_buttons == ((1 << START) | (1 << X) | (1 << Z))) {

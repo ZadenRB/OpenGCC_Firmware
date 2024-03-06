@@ -130,8 +130,12 @@ struct controller_state {
     triggers analog_triggers;
     /// \brief `true` if origin has not been set, `false` if it has
     bool origin = true;
-    /// \brief `false` if stick centers have not been set, `true` if they have
+    /// \brief `false` if stick and trigger centers have not been set, `true` if they have
     bool center_set = false;
+    /// \brief Left trigger center value, used to offset readings
+    uint8_t l_trigger_center = 0;
+    /// \brief Right trigger center value, used to offset readings
+    uint8_t r_trigger_center = 0;
     /// \brief `true` if safe mode is active, `false` if it is not
     bool safe_mode = true;
     /// \brief State of digital inputs of the in-progress combo

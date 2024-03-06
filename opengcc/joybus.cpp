@@ -157,11 +157,18 @@ void send_mode(uint8_t mode) {
     triggers triggers_copy = state.analog_triggers;
 
     if (mode != 0x06 && !state.center_set) {
+        // Set centers
+        state.l_trigger_center = triggers_copy.l_trigger;
+        state.r_trigger_center = triggers_copy.r_trigger;
         state.center_set = true;
+
+        // Ensure this poll is responded to with origin values
         sticks_copy.l_stick.x = 0x7F;
         sticks_copy.l_stick.y = 0x7F;
         sticks_copy.r_stick.x = 0x7F;
         sticks_copy.r_stick.y = 0x7F;
+        triggers_copy.l_trigger = 0x00;
+        triggers_copy.r_trigger = 0x00;
     }
 
     // Fill tx_buf based on mode and initiate send

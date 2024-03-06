@@ -193,11 +193,11 @@ void execute_combo() {
             config.configure_triggers();
             break;
         case (1 << START) | (1 << X) | (1 << LT_DIGITAL):
-            config.calibrate_stick(state.l_stick_coefficients, config.l_stick_calibration_measurement, config.l_stick_range, state.analog_sticks.r_stick,
+            config.configure_stick(config.l_stick_range, state.l_stick_coefficients, config.l_stick_calibration_measurement, state.analog_sticks.r_stick,
                                    get_left_stick);
             break;
         case (1 << START) | (1 << X) | (1 << RT_DIGITAL):
-            config.calibrate_stick(state.r_stick_coefficients, config.r_stick_calibration_measurement, config.r_stick_range, state.analog_sticks.l_stick,
+            config.configure_stick(config.r_stick_range, state.r_stick_coefficients, config.r_stick_calibration_measurement, state.analog_sticks.l_stick,
                                    get_right_stick);
             break;
         case (1 << START) | (1 << Y) | (1 << B):
@@ -329,12 +329,6 @@ stick remap_stick(double linearized_x, double linearized_y, uint8_t range) {
 
     int x = round(std::clamp(linearized_x, min_value, max_value));
     int y = round(std::clamp(linearized_y, min_value, max_value));
-
-    if (abs(x - CENTER) >= 80 && abs(y - CENTER) <= 6) {
-        y = CENTER;
-    } else if (abs(y - CENTER) >= 80 && abs(x - CENTER) <= 6) {
-        x = CENTER;
-    }
 
     return stick {
         x: static_cast<uint8_t>(x),

@@ -52,7 +52,7 @@ std::array<std::array<double, dimension>, dimension> convert_to_inverse(
  * accuracy and performance.
  *
  * \tparam num_coefficients Number of coefficients to generate
- * \tparam num_calibration steps Number of calibration steps
+ * \tparam num_calibration_steps Number of calibration steps
  * \param coefficients Output array for coefficients
  * \param measured_coordinates The measured input coordinates
  * \param expected_coordinates The expected output coordinates

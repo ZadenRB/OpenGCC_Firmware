@@ -257,7 +257,7 @@ void controller_configuration::configure_triggers() {
         // Get buttons
         uint16_t physical_buttons = get_buttons();
         state.buttons =
-            physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
+            physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN) & ~((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
 
         // Quit if combo is pressed
         if (physical_buttons == ((1 << START) | (1 << X) | (1 << Z))) {
@@ -349,7 +349,7 @@ void controller_configuration::configure_triggers() {
                 *threshold = (TRIGGER_THRESHOLD_MIN - 1) +
                              (new_threshold - TRIGGER_THRESHOLD_MAX);
             } else {
-                *threshold = static_cast<uint8_t>(new_threshold);
+                *threshold = new_threshold;
             }
 
             // Display mode on left trigger & offset on right trigger
@@ -363,14 +363,81 @@ void controller_configuration::configure_triggers() {
     }
 }
 
-void controller_configuration::calibrate_stick(
-    stick_coefficients &to_calibrate, stick_calibration_measurement &measurement, uint8_t range, stick &display_stick,
-    std::function<void(uint16_t &, uint16_t &)> get_stick) {
+void controller_configuration::configure_stick(uint8_t &range_out, stick_coefficients &coefficients_out, stick_calibration_measurement &measurement_out, stick &display_stick, std::function<void(uint16_t &, uint16_t &)> get_stick) {
     // Lock core 1 to prevent stick output from being displayed
     multicore_lockout_start_blocking();
 
-    stick_calibration calibration(range);
     bool buttons_released = false;
+
+    while (true) {
+        // Get buttons
+        uint16_t physical_buttons = get_buttons();
+        state.buttons =
+            physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
+
+        // Move onto calibration when Z is pressed
+        if (physical_buttons == (1 << Z)) {
+            state.analog_triggers.l_trigger = 0;
+            break;
+        }
+        
+        // Save and exit when A is pressed
+        if (physical_buttons == (1 << A)) {
+            state.analog_triggers.l_trigger = 0;
+            stick_calibration calibration(range_out, measurement_out);
+            coefficients_out = calibration.generate_coefficients();
+            persist();
+            multicore_lockout_end_blocking();
+            state.display_alert();
+            return;
+        }
+
+        // Wait for buttons to be released if they haven't been
+        if (!buttons_released) {
+            buttons_released = physical_buttons == 0;
+            if (buttons_released) {
+                busy_wait_ms(DEBOUNCE_TIME);
+            }
+            continue;
+        }
+
+        // Wait for buttons to be released whenever a combo is pressed
+        if ((physical_buttons & ((1 << A) | (1 << DPAD_UP) | (1 << DPAD_RIGHT) | (1 << DPAD_DOWN) | (1 << DPAD_LEFT))) != 0) {
+            buttons_released = false;
+        }
+
+        int new_range = range_out;
+        // Update range based
+        switch (physical_buttons) {
+            case (1 << DPAD_UP):
+                new_range += 1;
+                break;
+            case (1 << DPAD_RIGHT):
+                new_range += 10;
+                break;
+            case (1 << DPAD_DOWN):
+                new_range -= 1;
+                break;
+            case (1 << DPAD_LEFT):
+                new_range -= 10;
+                break;
+        }
+
+        // Wrap range
+        if (new_range < MIN_RANGE) {
+            range_out = (MAX_RANGE + 1) - (MIN_RANGE - new_range);
+        } else if (new_range > MAX_RANGE) {
+            range_out = (MIN_RANGE - 1) + (new_range - MAX_RANGE);
+        } else {
+            range_out = new_range;
+        }
+
+        // Display range on left trigger
+        state.analog_triggers.l_trigger = range_out;
+    }
+
+    stick_calibration calibration(range_out);
+    buttons_released = false;
 
     while (!calibration.done()) {
         // Show current step on display stick
@@ -413,8 +480,8 @@ void controller_configuration::calibrate_stick(
         }
     }
 
-    to_calibrate = calibration.generate_coefficients();
-    measurement = calibration.get_measurement();
+    coefficients_out = calibration.generate_coefficients();
+    measurement_out = calibration.get_measurement();
 
     persist();
     multicore_lockout_end_blocking();

@@ -181,14 +181,15 @@ class controller_configuration {
 
     /** \brief Enter stick configuration mode
      *
-     * \param to_calibrate Output for coefficients
-     * \param measurement Output for measurement
-     * \param range The maximum absolute value (offset from center) the calibrated stick should output
+     * \param range_out Output for range
+     * \param coefficients_out Output for coefficients
+     * \param measurement_out Output for measurement
      * \param display_stick Stick to display calibration (stick not being
-     * calibrated) \param get_stick Function to get stick
+     * calibrated)
+     * \param get_stick Function to get stick
      */
-    void calibrate_stick(
-        stick_coefficients &to_calibrate, stick_calibration_measurement &measurement, uint8_t range, stick &display_stick,
+    void configure_stick(
+        uint8_t &range_out, stick_coefficients &coefficients_out, stick_calibration_measurement &measurement_out, stick &display_stick,
         std::function<void(uint16_t &, uint16_t &)> get_stick);
 
     /// \brief Erase all stored configurations

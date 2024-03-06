@@ -92,4 +92,4 @@ constexpr uint R_CS_PIN = 23;
 constexpr uint TRIGGER_ADC_MASK =
     (1 << LT_ANALOG_ADC_INPUT) | (1 << RT_ANALOG_ADC_INPUT);
 
-#endif // PHOBGCC_H_ 
+#endif  // PHOBGCC_H_

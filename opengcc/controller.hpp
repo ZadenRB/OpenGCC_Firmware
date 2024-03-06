@@ -44,7 +44,8 @@ void init_sticks();
  * \param rx_out Output for right stick x-axis
  * \param ry_out Output for right stick y-axis
  */
-void get_sticks(uint16_t &lx_out, uint16_t &ly_out, uint16_t &rx_out, uint16_t &ry_out);
+void get_sticks(uint16_t &lx_out, uint16_t &ly_out, uint16_t &rx_out,
+                uint16_t &ry_out);
 
 /** \brief Get the value of the left stick
  *

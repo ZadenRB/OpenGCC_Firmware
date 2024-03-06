@@ -21,15 +21,15 @@
 #include "pico/multicore.h"
 
 void controller_state::display_alert() {
-    multicore_lockout_start_blocking();
-    this->analog_triggers.l_trigger = 255;
-    this->analog_triggers.r_trigger = 255;
-    busy_wait_ms(1500);
-    this->analog_triggers.l_trigger = 0;
-    this->analog_triggers.r_trigger = 0;
-    multicore_lockout_end_blocking();
+  multicore_lockout_start_blocking();
+  this->analog_triggers.l_trigger = 255;
+  this->analog_triggers.r_trigger = 255;
+  busy_wait_ms(1500);
+  this->analog_triggers.l_trigger = 0;
+  this->analog_triggers.r_trigger = 0;
+  multicore_lockout_end_blocking();
 }
 
 void controller_state::toggle_safe_mode() {
-    this->safe_mode = !this->safe_mode;
+  this->safe_mode = !this->safe_mode;
 }

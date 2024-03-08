@@ -12,7 +12,6 @@ This is a GameCube Controller firmware designed to be extensible to easily suppo
 * Dual settings profiles
 * Notch calibration (Planned)
 * Snapback filtering (Planned)
-* Single and dual-pin Joybus
 
 ## Building the Firmware
 

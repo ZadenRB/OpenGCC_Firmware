@@ -67,7 +67,6 @@ controller_configuration::controller_configuration() {
 
     // Persist
     persist();
-    return;
   }
 
   // Load stored configuration
@@ -161,133 +160,124 @@ void controller_configuration::select_profile(size_t profile) {
   persist();
 }
 
+void wait_until_buttons_released(uint16_t buttons_mask = 0xFFFF) {
+  absolute_time_t debounce_timeout_time = nil_time;
+
+  while (is_nil_time(debounce_timeout_time) ||
+         !time_reached(debounce_timeout_time)) {
+    uint16_t physical_buttons = get_buttons() & buttons_mask;
+    state.buttons =
+        (physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN));
+
+    // If no buttons are pressed, start the debounce timer
+    if (physical_buttons == 0 && is_nil_time(debounce_timeout_time)) {
+      debounce_timeout_time = make_timeout_time_ms(DEBOUNCE_TIME);
+    }
+
+    // If any buttons are pressed, stop the debounce timer
+    if (physical_buttons != 0 && !is_nil_time(debounce_timeout_time)) {
+      debounce_timeout_time = nil_time;
+    }
+  }
+}
+
+bool controller_configuration::check_persist_and_quit(
+    uint16_t physical_buttons) {
+  if (physical_buttons == (1 << START)) {
+    persist();
+    return true;
+  }
+
+  if (physical_buttons == (1 << X)) {
+    reload_instance();
+    return true;
+  }
+
+  return false;
+}
+
 void controller_configuration::swap_mappings() {
-  bool buttons_released = false;
   uint32_t first_button = 0;
   uint32_t second_button = 0;
 
-  while (true) {
-    // Get buttons
-    uint16_t physical_buttons = get_buttons();
+  wait_until_buttons_released();
 
+  // Wait for first button to be set
+  while (first_button == 0) {
+    uint16_t physical_buttons = get_buttons();
     state.buttons =
         physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
 
-    // Wait for buttons to be released if they haven't been
-    if (!buttons_released) {
-      buttons_released = physical_buttons == 0;
-      if (buttons_released) {
-        busy_wait_ms(DEBOUNCE_TIME);
-      }
-      continue;
-    }
-
-    if (first_button == 0 && physical_buttons != 0 &&
-        (physical_buttons & (physical_buttons - 1)) == 0) {
-      // Wait for first single button press
+    // If one button is pressed, set as first button
+    if ((physical_buttons & (physical_buttons - 1)) == 0) {
       first_button = physical_buttons;
-      buttons_released = false;
-    } else if (second_button == 0 && physical_buttons != 0 &&
-               (physical_buttons & (physical_buttons - 1)) == 0) {
-      // Wait for second single button press
-      second_button = physical_buttons;
-      buttons_released = false;
-
-      // If the second button is the same as the first, let it be held for
-      // 3 seconds to quit, otherwise discard it
-      if (second_button == first_button) {
-        absolute_time_t timeout_at = make_timeout_time_ms(3000);
-        // Ensure button is held for 3 seconds
-        while (absolute_time_diff_us(timeout_at, get_absolute_time()) < 0) {
-          physical_buttons = get_buttons();
-          if (physical_buttons != second_button) {
-            second_button = 0;
-            break;
-          }
-        }
-
-        // If second button was held, exit
-        if (second_button != 0) {
-          state.display_alert();
-          return;
-        }
-
-        continue;
-      }
-
-      // Once both buttons are selected, swap
-      // Get first button's mapping
-      uint8_t first_mapping_index = 0;
-      while ((first_button >> first_mapping_index) > 1) {
-        ++first_mapping_index;
-      }
-      uint8_t first_mapping =
-          profiles[current_profile].mappings[first_mapping_index];
-
-      // Get second button's mapping
-      uint8_t second_mapping_index = 0;
-      while ((second_button >> second_mapping_index) > 1) {
-        ++second_mapping_index;
-      }
-      uint8_t second_mapping =
-          profiles[current_profile].mappings[second_mapping_index];
-
-      // Swap mappings
-      profiles[current_profile].mappings[first_mapping_index] = second_mapping;
-      profiles[current_profile].mappings[second_mapping_index] = first_mapping;
-      persist();
-      state.display_alert();
-      return;
     }
   }
+
+  wait_until_buttons_released();
+
+  // Wait for second button to be set
+  while (second_button == 0) {
+    uint16_t physical_buttons = get_buttons();
+    state.buttons =
+        physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
+
+    // If one button is pressed, set as second button
+    if ((physical_buttons & (physical_buttons - 1)) == 0) {
+      second_button = physical_buttons;
+    }
+  }
+
+  // Get first button's mapping
+  uint8_t first_mapping_index = 0;
+  while ((first_button >> first_mapping_index) > 1) {
+    ++first_mapping_index;
+  }
+  uint8_t first_mapping =
+      profiles[current_profile].mappings[first_mapping_index];
+
+  // Get second button's mapping
+  uint8_t second_mapping_index = 0;
+  while ((second_button >> second_mapping_index) > 1) {
+    ++second_mapping_index;
+  }
+  uint8_t second_mapping =
+      profiles[current_profile].mappings[second_mapping_index];
+
+  // Swap mappings
+  profiles[current_profile].mappings[first_mapping_index] = second_mapping;
+  profiles[current_profile].mappings[second_mapping_index] = first_mapping;
+
+  persist();
+  state.display_alert();
 }
 
 void controller_configuration::configure_triggers() {
   // Lock core 1 to prevent analog trigger output from being displayed
   multicore_lockout_start_blocking();
 
-  // Set triggers to 0 initially
+  wait_until_buttons_released();
+
   state.analog_triggers.l_trigger = 0;
   state.analog_triggers.r_trigger = 0;
 
-  bool buttons_released = false;
-
   while (true) {
-    // Get buttons
     uint16_t physical_buttons = get_buttons();
     state.buttons =
         (physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN)) &
         ~((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
 
-    // Quit if combo is pressed
-    if (physical_buttons == ((1 << START) | (1 << X) | (1 << Z))) {
-      persist();
+    // Quit if needed
+    bool quit = check_persist_and_quit(physical_buttons);
+    if (quit) {
       multicore_lockout_end_blocking();
       state.display_alert();
       return;
     }
 
-    // Wait for buttons to be released if they haven't been
-    if (!buttons_released) {
-      buttons_released =
-          (physical_buttons & ~((1 << LT_DIGITAL) | (1 << RT_DIGITAL))) == 0;
-      if (buttons_released) {
-        busy_wait_ms(DEBOUNCE_TIME);
-      }
-      continue;
-    }
-
     // Mask out non-trigger buttons
     uint32_t trigger_pressed =
         physical_buttons & ((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
-
-    // If a combo might be pressed mark buttons as unreleased
-    if (trigger_pressed != 0 &&
-        (physical_buttons &
-         ((1 << A) | (1 << B) | (1 << DPAD_UP) | (1 << DPAD_RIGHT) |
-          (1 << DPAD_DOWN) | (1 << DPAD_LEFT))) != 0) {
-      buttons_released = false;
-    }
 
     if (trigger_pressed != 0 &&
         (trigger_pressed & (trigger_pressed - 1)) == 0) {
@@ -308,6 +298,7 @@ void controller_configuration::configure_triggers() {
 
       int new_threshold = *threshold;
       int new_mode = *mode;
+
       // Update mode/threshold based on combo
       switch (combo) {
         case (1 << A):
@@ -353,6 +344,13 @@ void controller_configuration::configure_triggers() {
       // Display mode on left trigger & offset on right trigger
       state.analog_triggers.l_trigger = *mode;
       state.analog_triggers.r_trigger = *threshold;
+
+      // Wait for buttons to be released when a combo is pressed
+      if ((physical_buttons &
+           ((1 << A) | (1 << B) | (1 << DPAD_UP) | (1 << DPAD_RIGHT) |
+            (1 << DPAD_DOWN) | (1 << DPAD_LEFT))) != 0) {
+        wait_until_buttons_released(~((1 << LT_DIGITAL) | (1 << RT_DIGITAL)));
+      }
     } else {
       // Otherwise display nothing
       state.analog_triggers.l_trigger = 0;
@@ -368,13 +366,20 @@ void controller_configuration::configure_stick(
   // Lock core 1 to prevent stick output from being displayed
   multicore_lockout_start_blocking();
 
-  bool buttons_released = false;
+  wait_until_buttons_released();
 
   while (true) {
-    // Get buttons
     uint16_t physical_buttons = get_buttons();
     state.buttons =
         physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
+
+    // Quit if needed
+    bool quit = check_persist_and_quit(physical_buttons);
+    if (quit) {
+      multicore_lockout_end_blocking();
+      state.display_alert();
+      return;
+    }
 
     // Move onto calibration when Z is pressed
     if (physical_buttons == (1 << Z)) {
@@ -382,34 +387,9 @@ void controller_configuration::configure_stick(
       break;
     }
 
-    // Save and exit when A is pressed
-    if (physical_buttons == (1 << A)) {
-      state.analog_triggers.l_trigger = 0;
-      stick_calibration calibration(range_out, measurement_out);
-      coefficients_out = calibration.generate_coefficients();
-      persist();
-      multicore_lockout_end_blocking();
-      state.display_alert();
-      return;
-    }
-
-    // Wait for buttons to be released if they haven't been
-    if (!buttons_released) {
-      buttons_released = physical_buttons == 0;
-      if (buttons_released) {
-        busy_wait_ms(DEBOUNCE_TIME);
-      }
-      continue;
-    }
-
-    // Wait for buttons to be released whenever a combo is pressed
-    if ((physical_buttons & ((1 << A) | (1 << DPAD_UP) | (1 << DPAD_RIGHT) |
-                             (1 << DPAD_DOWN) | (1 << DPAD_LEFT))) != 0) {
-      buttons_released = false;
-    }
-
     int new_range = range_out;
-    // Update range based
+
+    // Update range based on combo
     switch (physical_buttons) {
       case (1 << DPAD_UP):
         new_range += 1;
@@ -436,32 +416,30 @@ void controller_configuration::configure_stick(
 
     // Display range on left trigger
     state.analog_triggers.l_trigger = range_out;
+
+    // Wait for buttons to be released when a combo is pressed
+    if ((physical_buttons & ((1 << DPAD_UP) | (1 << DPAD_RIGHT) |
+                             (1 << DPAD_DOWN) | (1 << DPAD_LEFT))) != 0) {
+      wait_until_buttons_released();
+    }
   }
 
   stick_calibration calibration(range_out);
-  buttons_released = false;
 
   while (!calibration.done()) {
     // Show current step on display stick
     calibration.display_step(display_stick);
 
-    // Get buttons
     uint16_t physical_buttons = get_buttons();
     state.buttons =
         physical_buttons | (1 << ALWAYS_HIGH) | (state.origin << ORIGIN);
 
-    // Wait for buttons to be released if they haven't been
-    if (!buttons_released) {
-      buttons_released = physical_buttons == 0;
-      if (buttons_released) {
-        busy_wait_ms(DEBOUNCE_TIME);
-      }
-      continue;
-    }
-
-    // Wait for buttons to be released whenever a combo is pressed
-    if ((physical_buttons & ((1 << B) | (1 << Z) | (1 << X))) != 0) {
-      buttons_released = false;
+    // Quit if needed
+    bool quit = check_persist_and_quit(physical_buttons);
+    if (quit) {
+      multicore_lockout_end_blocking();
+      state.display_alert();
+      return;
     }
 
     // Handle combos
@@ -476,9 +454,14 @@ void controller_configuration::configure_stick(
         calibration.record_measurement(measured_x, measured_y);
         break;
       }
-      case (1 << X):
+      case (1 << A):
         calibration.skip_measurement();
         break;
+    }
+
+    // Wait for buttons to be released when a combo is pressed
+    if ((physical_buttons & ((1 << B) | (1 << Z) | (1 << A))) != 0) {
+      wait_until_buttons_released();
     }
   }
 

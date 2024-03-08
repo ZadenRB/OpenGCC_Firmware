@@ -137,6 +137,14 @@ class controller_configuration {
   /// \brief Persist the current configuration to flash
   void persist();
 
+  /** \brief Check buttons, determine whether to quit and save if needed
+     * 
+     * \param physical_buttons Physical button states
+     * 
+     * \return True if configuration mode should be quit, false otherwise
+     */
+  bool check_persist_and_quit(uint16_t physical_buttons);
+
   /** \brief Get a mapping by index for current profile
      *
      * \param index index of mapping to get

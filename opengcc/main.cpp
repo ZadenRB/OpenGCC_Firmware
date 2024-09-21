@@ -18,6 +18,7 @@
 
 #include "main.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 #include CONFIG_H

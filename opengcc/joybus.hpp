@@ -19,8 +19,6 @@
 #ifndef JOYBUS_H_
 #define JOYBUS_H_
 
-#include <stdint.h>
-
 #include <array>
 
 #include "hardware/pio.h"

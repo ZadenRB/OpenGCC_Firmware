@@ -18,10 +18,11 @@
 
 #include "main.hpp"
 
+#include CONFIG_H
+
 #include <algorithm>
 #include <cmath>
 
-#include CONFIG_H
 #include "calibration.hpp"
 #include "configuration.hpp"
 #include "hardware/clocks.h"
@@ -228,11 +229,11 @@ void read_triggers() {
   uint8_t l_trigger, r_trigger;
 
   // Read trigger values
-  get_triggers(l_trigger, r_trigger);
+  raw_triggers trigger_data = get_triggers();
 
   // Adjust trigger values based on center values
-  l_trigger -= std::min(l_trigger, state.l_trigger_center);
-  r_trigger -= std::min(r_trigger, state.r_trigger_center);
+  l_trigger -= std::min(trigger_data.l, state.l_trigger_center);
+  r_trigger -= std::min(trigger_data.r, state.r_trigger_center);
 
   // Apply analog trigger modes
   triggers new_triggers;
@@ -299,32 +300,43 @@ uint8_t apply_trigger_mode_analog(uint8_t analog_value, uint8_t threshold_value,
 void read_sticks() {
   controller_configuration &config = controller_configuration::get_instance();
 
-  uint16_t lx, ly, rx, ry;
-  get_sticks(lx, ly, rx, ry);
+  raw_sticks sticks_data = get_sticks();
 
   sticks new_sticks;
-  new_sticks.l_stick = process_raw_stick(lx, ly, state.l_stick_coefficients,
-                                         config.l_stick_range);
-  new_sticks.r_stick = process_raw_stick(rx, ry, state.r_stick_coefficients,
-                                         config.r_stick_range);
+  new_sticks.l_stick =
+      process_raw_stick(sticks_data.l_stick, state.analog_sticks.l_stick,
+                        state.l_stick_coefficients,
+                        state.l_stick_snapback_state, config.l_stick_range);
+
+  new_sticks.r_stick =
+      process_raw_stick(sticks_data.r_stick, state.analog_sticks.r_stick,
+                        state.r_stick_coefficients,
+                        state.r_stick_snapback_state, config.r_stick_range);
   state.analog_sticks = new_sticks;
 }
 
-stick process_raw_stick(uint16_t x_raw, uint16_t y_raw,
-                        stick_coefficients coefficients, uint8_t range) {
-  double linearized_x = linearize_axis(x_raw, coefficients.x_coefficients);
-  double linearized_y = linearize_axis(y_raw, coefficients.y_coefficients);
+stick process_raw_stick(raw_stick stick_data, stick previous_stick,
+                        stick_coefficients coefficients,
+                        stick_snapback_state &snapback_state, uint8_t range) {
+  if (!stick_data.fresh) {
+    return previous_stick;
+  }
 
-  return remap_stick(linearized_x, linearized_y, range);
+  double linearized_x =
+      linearize_axis(stick_data.x, coefficients.x_coefficients);
+  double linearized_y =
+      linearize_axis(stick_data.y, coefficients.y_coefficients);
+
+  return remap_stick(linearized_x, linearized_y, snapback_state, range);
 }
 
-double linearize_axis(uint16_t axis_raw,
+double linearize_axis(uint16_t raw_axis,
                       std::array<double, NUM_COEFFICIENTS> axis_coefficients) {
   double linearized_axis = 0;
   for (int i = 0; i < NUM_COEFFICIENTS; ++i) {
     double raised_raw = 1;
     for (int j = 0; j < i; ++j) {
-      raised_raw *= axis_raw;
+      raised_raw *= raw_axis;
     }
     linearized_axis += axis_coefficients[i] * raised_raw;
   }
@@ -332,13 +344,111 @@ double linearize_axis(uint16_t axis_raw,
   return linearized_axis;
 }
 
-stick remap_stick(double linearized_x, double linearized_y, uint8_t range) {
+stick remap_stick(double linearized_x, double linearized_y,
+                  stick_snapback_state &snapback_state, uint8_t range) {
   controller_configuration &config = controller_configuration::get_instance();
+
+  precise_stick unsnapped_stick =
+      unsnap_stick(linearized_x, linearized_y, snapback_state);
+
   double min_value = CENTER - range;
   double max_value = CENTER + range;
 
-  int x = round(std::clamp(linearized_x, min_value, max_value));
-  int y = round(std::clamp(linearized_y, min_value, max_value));
+  uint8_t x = round(std::clamp(unsnapped_stick.x, min_value, max_value));
+  uint8_t y = round(std::clamp(unsnapped_stick.y, min_value, max_value));
 
-  return stick{x : static_cast<uint8_t>(x), y : static_cast<uint8_t>(y)};
+  return stick{x, y};
+}
+
+precise_stick unsnap_stick(double linearized_x, double linearized_y,
+                           stick_snapback_state &snapback_state) {
+  absolute_time_t now = get_absolute_time();
+
+  double x_displacement = linearized_x - CENTER;
+  double y_displacement = linearized_y - CENTER;
+  double x_distance = fabs(x_displacement);
+  double y_distance = fabs(y_displacement);
+
+  if (x_distance >= SNAPBACK_DISTANCE) {
+    snapback_state.x.eligible_to_snapback = true;
+    snapback_state.x.last_eligible_to_snapback = now;
+  } else if (!is_nil_time(snapback_state.x.last_eligible_to_snapback) &&
+             absolute_time_diff_us(snapback_state.x.last_eligible_to_snapback,
+                                   now) >= SNAPBACK_ELIGIBILITY_TIMEOUT_US) {
+    snapback_state.x.eligible_to_snapback = false;
+    snapback_state.x.last_eligible_to_snapback = nil_time;
+  }
+
+  if (y_distance >= SNAPBACK_DISTANCE) {
+    snapback_state.y.eligible_to_snapback = true;
+    snapback_state.y.last_eligible_to_snapback = now;
+  } else if (!is_nil_time(snapback_state.y.last_eligible_to_snapback) &&
+             absolute_time_diff_us(snapback_state.y.last_eligible_to_snapback,
+                                   now) >= SNAPBACK_ELIGIBILITY_TIMEOUT_US) {
+    snapback_state.y.eligible_to_snapback = false;
+    snapback_state.y.last_eligible_to_snapback = nil_time;
+  }
+
+  double unsnapped_x = unsnap_axis(linearized_x, x_displacement, x_distance,
+                                   y_distance, now, snapback_state.x);
+  double unsnapped_y = unsnap_axis(linearized_y, y_displacement, y_distance,
+                                   x_distance, now, snapback_state.y);
+
+  return {unsnapped_x, unsnapped_y};
+}
+
+bool axis_crossed_center(double displacement, double last_displacement,
+                         double other_axis_distance) {
+  return std::signbit(displacement) != std::signbit(last_displacement) &&
+         other_axis_distance <= CROSSING_DISTANCE;
+}
+
+double unsnap_axis(double linearized_axis, double axis_displacement,
+                   double axis_distance, double other_axis_distance,
+                   absolute_time_t now, axis_snapback_state &snapback_state) {
+  double last_distance = fabs(snapback_state.last_displacement);
+
+  if (snapback_state.eligible_to_snapback &&
+      axis_crossed_center(axis_displacement, snapback_state.last_displacement,
+                          other_axis_distance)) {
+    snapback_state.falling = false;
+    snapback_state.falling_count = 0;
+    snapback_state.wave_started_at = now;
+    snapback_state.wave_expires_at =
+        delayed_by_us(now, DEFAULT_WAVE_DURATION_US);
+    snapback_state.in_snapback = true;
+    snapback_state.eligible_to_snapback = false;
+  } else if (snapback_state.in_snapback) {
+    bool snapback_expired =
+        absolute_time_diff_us(snapback_state.wave_expires_at, now) >= 0;
+
+    if (snapback_expired) {
+      snapback_state.in_snapback = false;
+      snapback_state.eligible_to_snapback = false;
+    } else if (!snapback_state.falling) {
+      if (axis_distance <= last_distance &&
+          axis_distance >= CENTERED_DISTANCE) {
+        snapback_state.falling_count += 1;
+      } else {
+        snapback_state.falling_count = 0;
+      }
+
+      if (snapback_state.falling_count >= 3) {
+        snapback_state.falling = true;
+        snapback_state.falling_count = 0;
+        uint64_t new_wave_duration =
+            absolute_time_diff_us(snapback_state.wave_started_at, now) +
+            SNAPBACK_WAVE_DURATION_BUFFER;
+        snapback_state.wave_expires_at = delayed_by_us(now, new_wave_duration);
+      }
+    }
+  }
+
+  snapback_state.last_displacement = axis_displacement;
+
+  if (snapback_state.in_snapback) {
+    return CENTER;
+  }
+
+  return linearized_axis;
 }

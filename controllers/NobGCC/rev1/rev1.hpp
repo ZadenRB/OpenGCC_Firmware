@@ -108,6 +108,8 @@ constexpr uint32_t ZERO = 0x0;
 constexpr uint32_t ONE = 0x1;
 
 // Si7210 configuration data
+// https://www.silabs.com/documents/public/data-sheets/si7210-datasheet.pdf
+constexpr uint8_t SI7210_DATA_ADDR = 0xC1;
 constexpr uint8_t SI7210_START_ADDR = 0xC4;
 constexpr uint8_t SI7210_AUTO_INCREMENT_ADDR = 0xC5;
 constexpr uint8_t SI7210_A0_ADDR = 0xCA;
@@ -121,9 +123,10 @@ constexpr uint8_t SI7210_OTP_DATA_ADDR = 0xE2;
 constexpr uint8_t SI7210_OTP_ENABLE_ADDR = 0xE3;
 
 constexpr std::array<uint8_t, 2> SI7210_WAKEUP_CONFIG = {0xC0, 0x00};
-constexpr std::array<uint8_t, 2> SI7210_IDLE_CONFIG = {0xC9, 0xFE};
 constexpr std::array<uint8_t, 2> SI7210_IDLE_TIME_CONFIG = {0xC8, 0x00};
-constexpr std::array<uint8_t, 2> SI7210_BURST_CONFIG = {0xCD, 0x26};
+constexpr std::array<uint8_t, 2> SI7210_IDLE_CONFIG = {0xC9, 0xFE};
+constexpr std::array<uint8_t, 2> SI7210_BURST_CONFIG = {0xCD, 0x06};
+
 constexpr std::array<uint8_t, 2> SI7210_READ_A0_CONFIG = {SI7210_OTP_ADDR_ADDR,
                                                           0x2D};
 constexpr std::array<uint8_t, 2> SI7210_READ_A1_CONFIG = {SI7210_OTP_ADDR_ADDR,
@@ -138,7 +141,7 @@ constexpr std::array<uint8_t, 2> SI7210_READ_A5_CONFIG = {SI7210_OTP_ADDR_ADDR,
                                                           0x32};
 
 constexpr std::array<uint16_t, 3> SI7210_READ_DATA_COMMANDS = {
-    I2C_IC_DATA_CMD_RESTART_BITS | 0xC1,
+    I2C_IC_DATA_CMD_RESTART_BITS | SI7210_DATA_ADDR,
     I2C_IC_DATA_CMD_RESTART_BITS | I2C_IC_DATA_CMD_CMD_BITS,
     I2C_IC_DATA_CMD_STOP_BITS | I2C_IC_DATA_CMD_CMD_BITS};
 

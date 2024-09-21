@@ -23,6 +23,7 @@
 #include "hardware/adc.h"
 #include "hardware/dma.h"
 #include "hardware/spi.h"
+#include "opengcc/controller.hpp"
 #include "opengcc/state.hpp"
 
 std::array<uint8_t, 3> stick_raw;
@@ -125,7 +126,7 @@ void init_triggers() {
 }
 
 // Read data from MCP3202 ADC, 12 bit
-void read_mcp3202_data(uint cs_pin, bool read_y_axis, uint16_t &out) {
+uint16_t read_mcp3202_data(uint cs_pin, bool read_y_axis) {
   // Setup config data based on which axis we're reading
   uint8_t config_byte = 0b11010000 | (read_y_axis << 5);
 
@@ -134,34 +135,24 @@ void read_mcp3202_data(uint cs_pin, bool read_y_axis, uint16_t &out) {
 
   // Read and push result to out
   spi_read_blocking(spi0, config_byte, stick_raw.data(), stick_raw.size());
-  out = (((stick_raw[0] & 0b00000111) << 9) | stick_raw[1] << 1 |
-         stick_raw[2] >> 7);
 
   // Deselect stick
   gpio_put(cs_pin, 1);
+
+  return (((stick_raw[0] & 0b00000111) << 9) | stick_raw[1] << 1 |
+          stick_raw[2] >> 7);
 }
 
 // Read x & y-axis from a stick
-void get_stick(uint cs_pin, uint16_t &x_out, uint16_t &y_out) {
-  read_mcp3202_data(cs_pin, false, x_out);
-  read_mcp3202_data(cs_pin, true, y_out);
+raw_stick get_stick(uint cs_pin) {
+  return {read_mcp3202_data(cs_pin, false), read_mcp3202_data(cs_pin, true),
+          true};
 }
 
-void get_sticks(uint16_t &lx_out, uint16_t &ly_out, uint16_t &rx_out,
-                uint16_t &ry_out) {
-  get_stick(L_CS_PIN, lx_out, ly_out);
-  get_stick(R_CS_PIN, rx_out, ry_out);
-}
+raw_sticks get_sticks() { return {get_stick(L_CS_PIN), get_stick(R_CS_PIN)}; }
 
-void get_left_stick(uint16_t &x_out, uint16_t &y_out) {
-  get_stick(L_CS_PIN, x_out, y_out);
-}
+raw_stick get_left_stick() { return get_stick(L_CS_PIN); }
 
-void get_right_stick(uint16_t &x_out, uint16_t &y_out) {
-  get_stick(R_CS_PIN, x_out, y_out);
-}
+raw_stick get_right_stick() { return get_stick(R_CS_PIN); }
 
-void get_triggers(uint8_t &l_out, uint8_t &r_out) {
-  l_out = triggers_raw[0];
-  r_out = triggers_raw[1];
-}
+raw_triggers get_triggers() { return {triggers_raw[0], triggers_raw[1]}; }

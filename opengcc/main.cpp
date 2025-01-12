@@ -27,15 +27,11 @@
 #include "hardware/clocks.h"
 #include "joybus.hpp"
 #include "pico/multicore.h"
-#include "pico/stdlib.h"
 #include "state.hpp"
 
 controller_state state;
 
 int main() {
-  // Initialize clocks
-  clocks_init();
-
   // Configure system PLL to 128 MHZ
   set_sys_clock_pll(1536 * MHZ, 6, 2);
 

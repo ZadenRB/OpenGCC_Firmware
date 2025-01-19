@@ -14,5 +14,3 @@ target_compile_definitions(OpenGCC INTERFACE
 )
 
 pico_add_extra_outputs(NobGCC_rev1)
-pico_enable_stdio_usb(NobGCC_rev1 1)
-pico_enable_stdio_uart(NobGCC_rev1 0)

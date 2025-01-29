@@ -362,7 +362,7 @@ void controller_configuration::configure_triggers() {
 void controller_configuration::configure_stick(
     uint8_t &range_out, stick_coefficients &coefficients_out,
     stick_calibration_measurement &measurement_out, stick &display_stick,
-    std::function<void(uint16_t &, uint16_t &)> get_stick) {
+    std::function<raw_stick()> get_stick) {
   // Lock core 1 to prevent stick output from being displayed
   multicore_lockout_start_blocking();
 
@@ -448,10 +448,8 @@ void controller_configuration::configure_stick(
         calibration.undo_measurement();
         break;
       case (1 << Z): {
-        uint16_t measured_x;
-        uint16_t measured_y;
-        get_stick(measured_x, measured_y);
-        calibration.record_measurement(measured_x, measured_y);
+        raw_stick stick_data = get_stick();
+        calibration.record_measurement(stick_data.x, stick_data.y);
         break;
       }
       case (1 << A):

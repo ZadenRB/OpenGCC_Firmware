@@ -23,6 +23,7 @@
 #include <functional>
 
 #include "calibration.hpp"
+#include "controller.hpp"
 #include "hardware/flash.h"
 #include "state.hpp"
 
@@ -198,7 +199,7 @@ class controller_configuration {
   void configure_stick(uint8_t &range_out, stick_coefficients &coefficients_out,
                        stick_calibration_measurement &measurement_out,
                        stick &display_stick,
-                       std::function<void(uint16_t &, uint16_t &)> get_stick);
+                       std::function<raw_stick()> get_stick);
 
   /// \brief Erase all stored configurations
   static void factory_reset();

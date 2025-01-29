@@ -23,6 +23,7 @@
 #include "hardware/adc.h"
 #include "hardware/dma.h"
 #include "hardware/i2c.h"
+#include "opengcc/controller.hpp"
 
 std::array<control_block, 12> l_stick_control_blocks = {};
 std::array<control_block, 12> r_stick_control_blocks = {};
@@ -68,8 +69,8 @@ void setup_si7210_sensor(i2c_inst_t *i2c, uint8_t addr) {
   i2c_write_blocking(i2c, addr, SI7210_WAKEUP_CONFIG.data(), 2, false);
 
   // Configure continuous measurement mode
-  i2c_write_blocking(i2c, addr, SI7210_IDLE_CONFIG.data(), 2, false);
   i2c_write_blocking(i2c, addr, SI7210_IDLE_TIME_CONFIG.data(), 2, false);
+  i2c_write_blocking(i2c, addr, SI7210_IDLE_CONFIG.data(), 2, false);
   i2c_write_blocking(i2c, addr, SI7210_BURST_CONFIG.data(), 2, false);
 
   // Get value to write to OTP read enable byte
@@ -296,27 +297,24 @@ void init_triggers() {
   adc_run(true);
 }
 
-// Read x & y-axis from a stick
-void get_stick(uint32_t stick_raw, uint16_t &x_out, uint16_t &y_out) {
-  x_out = (stick_raw >> 16) & 0x7FFF;
-  y_out = stick_raw & 0x00007FFF;
+raw_stick get_stick(uint32_t stick_raw) {
+  return {static_cast<uint16_t>((stick_raw >> 16) & 0x7FFF),
+          static_cast<uint16_t>(stick_raw & 0x00007FFF),
+          (stick_raw & 0x80008000) > 0};
 }
 
-void get_left_stick(uint16_t &x_out, uint16_t &y_out) {
-  get_stick(l_stick_raw, x_out, y_out);
+raw_stick get_left_stick() {
+  raw_stick ret_value = get_stick(l_stick_raw);
+  l_stick_raw &= 0x7FFF7FFF;
+  return ret_value;
 }
 
-void get_right_stick(uint16_t &x_out, uint16_t &y_out) {
-  get_stick(r_stick_raw, x_out, y_out);
+raw_stick get_right_stick() {
+  raw_stick ret_value = get_stick(r_stick_raw);
+  r_stick_raw &= 0x7FFF7FFF;
+  return ret_value;
 }
 
-void get_sticks(uint16_t &lx_out, uint16_t &ly_out, uint16_t &rx_out,
-                uint16_t &ry_out) {
-  get_left_stick(lx_out, ly_out);
-  get_right_stick(rx_out, ry_out);
-}
+raw_sticks get_sticks() { return {get_left_stick(), get_right_stick()}; }
 
-void get_triggers(uint8_t &l_out, uint8_t &r_out) {
-  l_out = triggers_raw[0];
-  r_out = triggers_raw[1];
-}
+raw_triggers get_triggers() { return {triggers_raw[0], triggers_raw[1]}; }

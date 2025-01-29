@@ -52,6 +52,9 @@ constexpr uint RT_DIGITAL = 5;
 /// \brief Left trigger button bit in controller state
 constexpr uint LT_DIGITAL = 6;
 
+/// \brief Always high bit in controller state
+constexpr uint ALWAYS_HIGH = 7;
+
 /// \brief A button bit in controller state
 constexpr uint A = 8;
 
@@ -67,9 +70,6 @@ constexpr uint Y = 11;
 /// \brief Start button bit in controller state
 constexpr uint START = 12;
 
-/// \brief Always high bit in controller state
-constexpr uint ALWAYS_HIGH = 7;
-
 /// \brief Origin bit in controller state
 constexpr uint ORIGIN = 13;
 
@@ -79,7 +79,7 @@ constexpr uint16_t CENTER = 127;
 /// \brief Number of coefficients for stick linearization
 constexpr int NUM_COEFFICIENTS = 4;
 
-/// \brief Calibration points for x & y axis of an analog stick.
+/// \brief Calibration points for x & y axis of an analog stick
 struct stick_coefficients {
   /// \brief Coefficients for x-axis linearization
   std::array<double, NUM_COEFFICIENTS> x_coefficients;
@@ -88,7 +88,67 @@ struct stick_coefficients {
   std::array<double, NUM_COEFFICIENTS> y_coefficients;
 };
 
-/// \brief Grouping of axes for a single analog stick
+/// \brief Distance from CENTER outside which an axis is eligible to snapback
+constexpr double SNAPBACK_DISTANCE = 40;
+
+/// \brief Distance from CENTER within which an axis is considered to be centered for snapback purposes
+constexpr uint16_t CENTERED_DISTANCE = 5;
+
+/** \brief Distance from CENTER within which the other axis can be considered to be crossing the center for snapback purposes
+ * 
+ * Used to differentiate between, for instance, a stick freely returning to center and a stick being spun around the outer gate
+*/
+constexpr uint16_t CROSSING_DISTANCE = 32;
+
+/// \brief Default timeout for snapback wave after crossing zero
+constexpr uint64_t DEFAULT_WAVE_DURATION_US = 6500;
+
+/// \brief Timeout for snapback eligibility when close to zero
+constexpr uint64_t SNAPBACK_ELIGIBILITY_TIMEOUT_US = 5000;
+
+/// \brief Number of consecutive falling measurements required during snapback to enter the falling state
+constexpr uint8_t FALLING_COUNT_THRESHOLD = 3;
+
+/// \brief Buffer added to rise time of snapback wave to allow it to fall
+constexpr uint8_t SNAPBACK_WAVE_DURATION_BUFFER = 80;
+
+/// \brief Individual axis snapback state
+struct axis_snapback_state {
+  /// \brief Previous displacement of the axis
+  double last_displacement;
+  /// \brief `true` if the axis value is returning to zero during snapback, `false` otherwise
+  bool falling;
+  /// \brief Number of consecutive falling measurements
+  uint8_t falling_count;
+  /// \brief Timestamp at which the current snapback wave started
+  absolute_time_t wave_started_at;
+  /// \brief Timestamp at which the current snapback wave expires
+  absolute_time_t wave_expires_at;
+  /// \brief `true` if the axis is currently in snapback, `false` otherwise
+  bool in_snapback;
+  /// \brief `true` if the axis is eligible to enter snapback, `false` otherwise
+  bool eligible_to_snapback;
+  /// \brief Last timestamp at which the axis was set to be eligible to enter snapback
+  absolute_time_t last_eligible_to_snapback;
+};
+
+/// \brief Grouping of axis snapback states for a single analog stick
+struct stick_snapback_state {
+  /// \brief X-axis snapback state
+  axis_snapback_state x;
+  /// \brief Y-axis snapback state
+  axis_snapback_state y;
+};
+
+/// \brief Grouping of axes for a single analog stick with full precision
+struct precise_stick {
+  /// \brief X-axis
+  double x;
+  /// \brief Y-axis
+  double y;
+};
+
+/// \brief Grouping of axes for a single analog stick after processing
 struct stick {
   /// \brief X-axis
   uint8_t x;
@@ -98,9 +158,9 @@ struct stick {
 
 /// \brief Grouping of analog sticks
 struct sticks {
-  /// \brief State of left stick
+  /// \brief Left stick
   stick l_stick;
-  /// \brief State of right stick
+  /// \brief Right stick
   stick r_stick;
 };
 
@@ -112,7 +172,7 @@ struct triggers {
   uint8_t r_trigger;
 };
 
-/// \brief Current controller state
+/// \brief Controller state
 struct controller_state {
   /// \brief State of digital inputs
   uint16_t buttons = 0;
@@ -142,6 +202,10 @@ struct controller_state {
   uint16_t active_combo = 0;
   /// \brief Alarm ID for triggering a combo
   absolute_time_t combo_trigger_timestamp = nil_time;
+  /// \brief Left stick snapback state
+  stick_snapback_state l_stick_snapback_state;
+  /// \brief Right stick snapback state
+  stick_snapback_state r_stick_snapback_state;
 
   /// \brief Max out triggers for 1.5 seconds to indicate an alert
   void display_alert();

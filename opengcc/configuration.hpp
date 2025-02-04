@@ -40,27 +40,27 @@
 
 /// \brief Enumeration of trigger modes
 enum trigger_mode : uint {
-  both,               ///< Analog and digital output (OEM behavior)
-  digital_only,       ///< Digital output only
-  analog_only,        ///< Analog output only
-  trigger_plug,       ///< Analog output to threshold, then digital output only
+  both,          ///< Analog and digital output (OEM behavior)
+  digital_only,  ///< Digital output only
+  analog_only,   ///< Analog output only
+  capped_analog,  ///< Analog output limited to configured value and digital output
   analog_on_digital,  ///< Analog output only on digital press
   both_on_digital,    ///< Analog and digital output on digital press
-  analog_multiplied,  ///< Analog and digital output, analog value scaled up
-  last_trigger_mode = analog_multiplied,  ///< Set to last value of enumeration
+  multiplied_analog,  ///< Analog and digital output, analog value scaled up
+  last_trigger_mode = multiplied_analog,  ///< Set to last value of enumeration
   first_trigger_mode = both               ///< Set to first value of enumeration
 };
 
-/// \brief Minimum value for trigger threshold, set to Melee Z shield value
-constexpr uint8_t TRIGGER_THRESHOLD_MIN = 49;
+/// \brief Minimum for trigger configured value, set to Melee Z shield value
+constexpr uint8_t TRIGGER_CONFIGURED_VALUE_MIN = 49;
 
-/// \brief Maximum value for trigger threshold
-constexpr uint8_t TRIGGER_THRESHOLD_MAX = 209;
+/// \brief Maximum for trigger configured value
+constexpr uint8_t TRIGGER_CONFIGURED_VALUE_MAX = 209;
 
-/// \brief Value to scale threshold by for analog multiplication trigger mode
+/// \brief Multiplied by configured value for analog multiplication trigger mode
 constexpr float TRIGGER_MULTIPLIER_M = .0125f;
 
-/// \brief Value to add to threshold for analog multiplication trigger mode
+/// \brief Added to configured value for analog multiplication trigger mode
 constexpr float TRIGGER_MULTIPLIER_B = 0.3875f;
 
 /** \brief Settings which a player might change when playing different games
@@ -75,14 +75,14 @@ struct configuration_profile {
   /// \brief Left trigger mode
   trigger_mode l_trigger_mode;
 
-  /// \brief Left trigger threshold
-  uint8_t l_trigger_threshold_value;
+  /// \brief Left trigger configured value
+  uint8_t l_trigger_configured_value;
 
   /// \brief Right trigger mode
   trigger_mode r_trigger_mode;
 
-  /// \brief Right trigger threshold
-  uint8_t r_trigger_threshold_value;
+  /// \brief Right trigger configured value
+  uint8_t r_trigger_configured_value;
 };
 
 /** \brief Current controller configuration
@@ -160,11 +160,11 @@ class controller_configuration {
      */
   trigger_mode l_trigger_mode();
 
-  /** \brief Left trigger threshold value for current profile
+  /** \brief Left trigger configured value for current profile
      *
-     * \return The left trigger threshold value
+     * \return The left trigger configured value
      */
-  uint8_t l_trigger_threshold_value();
+  uint8_t l_trigger_configured_value();
 
   /** \brief Right trigger mode for current profile
      *
@@ -172,11 +172,11 @@ class controller_configuration {
      */
   trigger_mode r_trigger_mode();
 
-  /** \brief Right trigger threshold value for current profile
+  /** \brief Right trigger configured value for current profile
      *
-     * \return The right trigger threshold value
+     * \return The right trigger configured value
      */
-  uint8_t r_trigger_threshold_value();
+  uint8_t r_trigger_configured_value();
 
   /// \brief Set the current profile to the given one
   void select_profile(size_t profile);

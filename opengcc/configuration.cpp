@@ -281,7 +281,7 @@ void controller_configuration::configure_triggers() {
 
     if (trigger_pressed != 0 &&
         (trigger_pressed & (trigger_pressed - 1)) == 0) {
-      // If only one trigger is pressed, set it as the one to modify
+      // Set the pressed trigger as the one to modify
       trigger_mode *mode;
       uint8_t *configured_value;
       if (trigger_pressed == (1 << LT_DIGITAL)) {

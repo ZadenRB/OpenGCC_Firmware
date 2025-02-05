@@ -109,9 +109,9 @@ void read_digital(uint16_t physical_buttons) {
 
   // Apply digital trigger modes
   apply_trigger_mode_digital(remapped_buttons, LT_DIGITAL,
-                             config.l_trigger_mode(), config.r_trigger_mode());
+                             config.l_trigger_mode());
   apply_trigger_mode_digital(remapped_buttons, RT_DIGITAL,
-                             config.r_trigger_mode(), config.l_trigger_mode());
+                             config.r_trigger_mode());
 
   // Update state
   state.buttons = remapped_buttons;
@@ -125,15 +125,8 @@ void remap(uint16_t &remapped_buttons, uint16_t physical_buttons,
 }
 
 void apply_trigger_mode_digital(uint16_t &buttons, uint8_t bit_to_set,
-                                trigger_mode mode, trigger_mode other_mode) {
+                                trigger_mode mode) {
   switch (mode) {
-    case both:
-    case trigger_plug:
-    case analog_multiplied:
-      if (other_mode == analog_on_digital) {
-        buttons = buttons & ~(1 << bit_to_set);
-      }
-      break;
     case analog_only:
     case analog_on_digital:
       buttons = buttons & ~(1 << bit_to_set);
@@ -238,19 +231,17 @@ void read_triggers() {
   // Apply analog trigger modes
   triggers new_triggers;
   new_triggers.l_trigger = apply_trigger_mode_analog(
-      l_trigger, config.l_trigger_threshold_value(), state.lt_pressed,
-      config.mapping(LT_DIGITAL) == LT_DIGITAL, config.l_trigger_mode(),
-      config.r_trigger_mode());
+      l_trigger, config.l_trigger_configured_value(), state.lt_pressed,
+      config.mapping(LT_DIGITAL) == LT_DIGITAL, config.l_trigger_mode());
   new_triggers.r_trigger = apply_trigger_mode_analog(
-      r_trigger, config.r_trigger_threshold_value(), state.rt_pressed,
-      config.mapping(RT_DIGITAL) == RT_DIGITAL, config.r_trigger_mode(),
-      config.l_trigger_mode());
+      r_trigger, config.r_trigger_configured_value(), state.rt_pressed,
+      config.mapping(RT_DIGITAL) == RT_DIGITAL, config.r_trigger_mode());
   state.analog_triggers = new_triggers;
 }
 
-uint8_t apply_trigger_mode_analog(uint8_t analog_value, uint8_t threshold_value,
-                                  bool digital_value, bool enable_analog,
-                                  trigger_mode mode, trigger_mode other_mode) {
+uint8_t apply_trigger_mode_analog(uint8_t analog_value,
+                                  uint8_t configured_value, bool digital_value,
+                                  bool enable_analog, trigger_mode mode) {
   uint8_t out = 0;
 
   switch (mode) {
@@ -259,37 +250,27 @@ uint8_t apply_trigger_mode_analog(uint8_t analog_value, uint8_t threshold_value,
       break;
     case both:
     case analog_only:
-      if (other_mode == analog_on_digital) {
-        out = 0;
-      } else {
-        out = analog_value * enable_analog;
-      }
+      out = analog_value * enable_analog;
       break;
-    case trigger_plug:
-      if (other_mode == analog_on_digital) {
-        out = 0;
-      } else if (analog_value > threshold_value) {
-        out = threshold_value * enable_analog;
+    case capped_analog:
+      if (analog_value > configured_value) {
+        out = configured_value * enable_analog;
       } else {
         out = analog_value * enable_analog;
       }
       break;
     case analog_on_digital:
     case both_on_digital:
-      out = threshold_value * digital_value * enable_analog;
+      out = configured_value * digital_value * enable_analog;
       break;
-    case analog_multiplied:
-      if (other_mode == analog_on_digital) {
-        out = 0;
+    case multiplied_analog:
+      float multiplier =
+          (configured_value * TRIGGER_MULTIPLIER_M) + TRIGGER_MULTIPLIER_B;
+      float multiplied_value = analog_value * multiplier;
+      if (multiplied_value > 255) {
+        out = 255 * enable_analog;
       } else {
-        float multiplier =
-            (threshold_value * TRIGGER_MULTIPLIER_M) + TRIGGER_MULTIPLIER_B;
-        float multiplied_value = analog_value * multiplier;
-        if (multiplied_value > 255) {
-          out = 255 * enable_analog;
-        } else {
-          out = static_cast<uint8_t>(multiplied_value) * enable_analog;
-        }
+        out = static_cast<uint8_t>(multiplied_value) * enable_analog;
       }
       break;
   }

@@ -44,9 +44,9 @@ controller_configuration::controller_configuration() {
     default_profile.mappings[11] = 0b1011;
     default_profile.mappings[12] = 0b1100;
     default_profile.l_trigger_mode = both;
-    default_profile.l_trigger_threshold_value = TRIGGER_THRESHOLD_MIN;
+    default_profile.l_trigger_configured_value = TRIGGER_CONFIGURED_VALUE_MIN;
     default_profile.r_trigger_mode = both;
-    default_profile.r_trigger_threshold_value = TRIGGER_THRESHOLD_MIN;
+    default_profile.r_trigger_configured_value = TRIGGER_CONFIGURED_VALUE_MIN;
 
     // Set all profiles to default
     for (int i = 0; i < profiles.size(); ++i) {
@@ -143,16 +143,16 @@ trigger_mode controller_configuration::l_trigger_mode() {
   return profiles[current_profile].l_trigger_mode;
 }
 
-uint8_t controller_configuration::l_trigger_threshold_value() {
-  return profiles[current_profile].l_trigger_threshold_value;
+uint8_t controller_configuration::l_trigger_configured_value() {
+  return profiles[current_profile].l_trigger_configured_value;
 }
 
 trigger_mode controller_configuration::r_trigger_mode() {
   return profiles[current_profile].r_trigger_mode;
 }
 
-uint8_t controller_configuration::r_trigger_threshold_value() {
-  return profiles[current_profile].r_trigger_threshold_value;
+uint8_t controller_configuration::r_trigger_configured_value() {
+  return profiles[current_profile].r_trigger_configured_value;
 }
 
 void controller_configuration::select_profile(size_t profile) {
@@ -281,25 +281,27 @@ void controller_configuration::configure_triggers() {
 
     if (trigger_pressed != 0 &&
         (trigger_pressed & (trigger_pressed - 1)) == 0) {
-      // If only one trigger is pressed, set it as the one to modify
+      // Set the pressed trigger as the one to modify
       trigger_mode *mode;
-      uint8_t *threshold;
+      uint8_t *configured_value;
       if (trigger_pressed == (1 << LT_DIGITAL)) {
         mode = &(profiles[current_profile].l_trigger_mode);
-        threshold = &(profiles[current_profile].l_trigger_threshold_value);
+        configured_value =
+            &(profiles[current_profile].l_trigger_configured_value);
       } else if (trigger_pressed == (1 << RT_DIGITAL)) {
         mode = &(profiles[current_profile].r_trigger_mode);
-        threshold = &(profiles[current_profile].r_trigger_threshold_value);
+        configured_value =
+            &(profiles[current_profile].r_trigger_configured_value);
       }
 
       // Mask out trigger buttons
       uint32_t combo =
           physical_buttons & ~((1 << LT_DIGITAL) | (1 << RT_DIGITAL));
 
-      int new_threshold = *threshold;
+      int new_configured_value = *configured_value;
       int new_mode = *mode;
 
-      // Update mode/threshold based on combo
+      // Update mode/configured value based on combo
       switch (combo) {
         case (1 << A):
           new_mode += 1U;
@@ -308,16 +310,16 @@ void controller_configuration::configure_triggers() {
           new_mode -= 1U;
           break;
         case (1 << DPAD_UP):
-          new_threshold += 1U;
+          new_configured_value += 1U;
           break;
         case (1 << DPAD_RIGHT):
-          new_threshold += 10U;
+          new_configured_value += 10U;
           break;
         case (1 << DPAD_DOWN):
-          new_threshold -= 1U;
+          new_configured_value -= 1U;
           break;
         case (1 << DPAD_LEFT):
-          new_threshold -= 10U;
+          new_configured_value -= 10U;
           break;
       }
 
@@ -330,20 +332,22 @@ void controller_configuration::configure_triggers() {
         *mode = static_cast<trigger_mode>(new_mode);
       }
 
-      // Wrap threshold
-      if (new_threshold < TRIGGER_THRESHOLD_MIN) {
-        *threshold = (TRIGGER_THRESHOLD_MAX + 1) -
-                     (TRIGGER_THRESHOLD_MIN - new_threshold);
-      } else if (new_threshold > TRIGGER_THRESHOLD_MAX) {
-        *threshold = (TRIGGER_THRESHOLD_MIN - 1) +
-                     (new_threshold - TRIGGER_THRESHOLD_MAX);
+      // Wrap configured value
+      if (new_configured_value < TRIGGER_CONFIGURED_VALUE_MIN) {
+        *configured_value =
+            (TRIGGER_CONFIGURED_VALUE_MAX + 1) -
+            (TRIGGER_CONFIGURED_VALUE_MIN - new_configured_value);
+      } else if (new_configured_value > TRIGGER_CONFIGURED_VALUE_MAX) {
+        *configured_value =
+            (TRIGGER_CONFIGURED_VALUE_MIN - 1) +
+            (new_configured_value - TRIGGER_CONFIGURED_VALUE_MAX);
       } else {
-        *threshold = new_threshold;
+        *configured_value = new_configured_value;
       }
 
       // Display mode on left trigger & offset on right trigger
       state.analog_triggers.l_trigger = *mode;
-      state.analog_triggers.r_trigger = *threshold;
+      state.analog_triggers.r_trigger = *configured_value;
 
       // Wait for buttons to be released when a combo is pressed
       if ((physical_buttons &

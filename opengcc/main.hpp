@@ -51,10 +51,9 @@ void remap(uint16_t& remapped_buttons, uint16_t physical_buttons,
  * \param buttons Output button states
  * \param bit_to_set Which bit of the output to set
  * \param mode Current trigger mode
- * \param other_mode Current trigger mode of other trigger
  */
 void apply_trigger_mode_digital(uint16_t& buttons, uint8_t bit_to_set,
-                                trigger_mode mode, trigger_mode other_mode);
+                                trigger_mode mode);
 
 /** \brief Check current physical button states to see if a combo is being
  * pressed
@@ -80,17 +79,16 @@ void read_triggers();
 /** \brief Update analog trigger value based on trigger mode
  *
  * \param analog_value Current analog trigger value
- * \param threshold_value Configured threshold value
+ * \param configured_value Configured value
  * \param digital_value Digital value for this trigger
  * \param enable_analog Whether analog output is enabled
  * \param mode Current trigger mode
- * \param other_mode Current trigger mode of other trigger
  *
  * \return New analog value after applying trigger mode
  */
-uint8_t apply_trigger_mode_analog(uint8_t analog_value, uint8_t threshold_value,
-                                  bool digital_value, bool enable_analog,
-                                  trigger_mode mode, trigger_mode other_mode);
+uint8_t apply_trigger_mode_analog(uint8_t analog_value,
+                                  uint8_t configured_value, bool digital_value,
+                                  bool enable_analog, trigger_mode mode);
 
 /// \brief Read analog sticks and update state
 void read_sticks();

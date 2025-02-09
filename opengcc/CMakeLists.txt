@@ -29,5 +29,11 @@ target_link_libraries(OpenGCC INTERFACE
     pico_stdlib
 )
 
+target_compile_definitions(OpenGCC INTERFACE
+    NONE=0
+    LINEAR=1
+    POLYNOMIAL=2
+)
+
 pico_generate_pio_header(OpenGCC ${CMAKE_CURRENT_SOURCE_DIR}/pio/joybus.pio)
 pico_generate_pio_header(OpenGCC ${CMAKE_CURRENT_SOURCE_DIR}/pio/single_pin_joybus.pio)

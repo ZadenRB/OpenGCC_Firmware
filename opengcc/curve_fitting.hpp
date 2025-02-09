@@ -44,7 +44,7 @@ std::array<std::array<double, dimension>, dimension> convert_to_inverse(
  * Produces coefficients for a function
  * `coefficients[0]*x^0 + ... + coefficients[i]*x^i + ... + `
  * `coefficients[num_coefficients-1]*x^(num_coefficients-1)`.
- * Used to normalize  sensor output.
+ * Used to normalize sensor output.
  *
  * \note Increasing `num_coefficients` will increase runtime of sensor
  * normalization which is run on every poll, so there is a tradeoff between

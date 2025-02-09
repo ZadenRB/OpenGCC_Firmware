@@ -1,5 +1,5 @@
 /*
-    Copyright 2023 Zaden Ruggiero-Bouné
+    Copyright 2023-2025 Zaden Ruggiero-Bouné
 
     This file is part of OpenGCC.
 
@@ -136,7 +136,7 @@ std::array<double, num_coefficients> fit_curve(
   }
 
   std::array<std::array<double, num_coefficients>, num_coefficients> inverse =
-      convert_to_inverse(a);
+      convert_to_inverse<num_coefficients>(a);
 
   for (int r = 0; r < num_coefficients; ++r) {
     double value = 0;

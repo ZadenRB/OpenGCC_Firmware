@@ -1,5 +1,5 @@
 /*
-    Copyright 2023 Zaden Ruggiero-Bouné
+    Copyright 2023-2025 Zaden Ruggiero-Bouné
 
     This file is part of OpenGCC.
 
@@ -93,11 +93,11 @@ uint8_t apply_trigger_mode_analog(uint8_t analog_value,
 /// \brief Read analog sticks and update state
 void read_sticks();
 
-/** \brief Process raw stick data, running it through linearization and rempping
+/** \brief Process raw stick data, running it through normalization and rempping
  * 
  * \param stick_data Raw stick data
  * \param previous_stick Last stick state
- * \param stick_coefficients Coefficients used to linearize stick
+ * \param stick_coefficients Coefficients used to normalize stick
  * \param snapback_state Current state of snapback for the stick
  * \param range Maximum range around center
  * 
@@ -107,20 +107,20 @@ stick process_raw_stick(raw_stick stick_data, stick previous_stick,
                         stick_coefficients coefficients,
                         stick_snapback_state& snapback_state, uint8_t range);
 
-/** \brief Linearize an axis using the given coefficients
+/** \brief Normalize an axis using the given polynomial coefficients
  *
- * \param raw_axis Raw axis value to linearize
- * \param axis_coefficients Coefficients to use for axis linearization
+ * \param raw_axis Raw axis value to normalize
+ * \param axis_coefficients Coefficients to use for axis normalization
  *
- * \return Linearized axis value
+ * \return Normalized axis value
  */
-double linearize_axis(uint16_t raw_axis,
+double normalize_axis(uint16_t raw_axis,
                       std::array<double, NUM_COEFFICIENTS> coefficients);
 
-/** \brief Remap linearized stick data for snapback and cardinals
+/** \brief Remap normalized stick data for snapback and cardinals
  * 
- * \param linearized_x Linearized x-axis value
- * \param linearized_y Linearized y-axis value
+ * \param normalized_x Normalized x-axis value
+ * \param normalized_y Normalized y-axis value
  * \param snapback_state Current state of snapback for the stick
  * \param range Maximum range around center
  * 
@@ -131,18 +131,18 @@ stick remap_stick(double x, double y, stick_snapback_state& snapback_state,
 
 /** \brief Filter a stick for snapback
  * 
- * \param linearized_x Linearized x-axis value
- * \param linearized_y Linearized y-axis value
+ * \param normalized_x Normalized x-axis value
+ * \param normalized_y Normalized y-axis value
  * \param snapback_state Current state of snapback for the stick
  * 
  * \return Stick data with snapback removed
  */
-precise_stick unsnap_stick(double linearized_x, double linearized_y,
+precise_stick unsnap_stick(double normalized_x, double normalized_y,
                            stick_snapback_state& snapback_state);
 
 /** \brief Filter an axis for snapback
  * 
- * \param linearized_axis Linearized axis value
+ * \param normalized_axis Normalized axis value
  * \param axis_displacement Displacement from center of the axis
  * \param axis_distance Distance from center of the axis
  * \param other_axis_distance Distance from center of the other axis
@@ -151,7 +151,7 @@ precise_stick unsnap_stick(double linearized_x, double linearized_y,
  * 
  * \return
  */
-double unsnap_axis(double linearized_axis, double axis_displacement,
+double unsnap_axis(double normalized_axis, double axis_displacement,
                    double axis_distance, double other_axis_distance,
                    absolute_time_t now, axis_snapback_state& snapback_state);
 

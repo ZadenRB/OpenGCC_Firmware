@@ -1,2 +1,0 @@
-#define JOYBUS_IN_PIN 18
-#define JOYBUS_OUT_PIN 19

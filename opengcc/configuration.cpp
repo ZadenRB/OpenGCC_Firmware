@@ -1,5 +1,5 @@
 /*
-    Copyright 2023 Zaden Ruggiero-Bouné
+    Copyright 2023-2025 Zaden Ruggiero-Bouné
 
     This file is part of OpenGCC.
 
@@ -19,7 +19,6 @@
 #include "configuration.hpp"
 
 #include "calibration.hpp"
-#include "controller.hpp"
 #include "hardware/gpio.h"
 #include "pico/multicore.h"
 #include "state.hpp"

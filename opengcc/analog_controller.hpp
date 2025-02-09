@@ -1,5 +1,5 @@
 /*
-    Copyright 2023 Zaden Ruggiero-Bouné
+    Copyright 2023-2025 Zaden Ruggiero-Bouné
 
     This file is part of OpenGCC.
 
@@ -18,6 +18,8 @@
 
 #ifndef CONTROLLER_H_
 #define CONTROLLER_H_
+
+#include <pico/types.h>
 
 /** \file controller.hpp
  * \brief Functionality that is varies in implementation between controllers

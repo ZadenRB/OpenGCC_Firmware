@@ -1,5 +1,5 @@
 /*
-    Copyright 2023 Zaden Ruggiero-Bouné
+    Copyright 2023-2025 Zaden Ruggiero-Bouné
 
     This file is part of OpenGCC.
 
@@ -16,14 +16,14 @@
    OpenGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#include "rev1.hpp"
+#include "controller.hpp"
 
 #include <array>
 
+#include "analog_controller.hpp"
 #include "hardware/adc.h"
 #include "hardware/dma.h"
 #include "hardware/i2c.h"
-#include "opengcc/controller.hpp"
 
 std::array<control_block, 12> l_stick_control_blocks = {};
 std::array<control_block, 12> r_stick_control_blocks = {};

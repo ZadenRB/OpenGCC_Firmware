@@ -1,5 +1,5 @@
 /*
-    Copyright 2023 Zaden Ruggiero-Bouné
+    Copyright 2023-2025 Zaden Ruggiero-Bouné
 
     This file is part of OpenGCC.
 
@@ -16,15 +16,15 @@
    OpenGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#include "PhobGCC.hpp"
+#include "controller.hpp"
 
 #include <array>
 
+#include "analog_controller.hpp"
 #include "hardware/adc.h"
 #include "hardware/dma.h"
 #include "hardware/spi.h"
-#include "opengcc/controller.hpp"
-#include "opengcc/state.hpp"
+#include "state.hpp"
 
 std::array<uint8_t, 3> stick_raw;
 
@@ -143,7 +143,7 @@ uint16_t read_mcp3202_data(uint cs_pin, bool read_y_axis) {
           stick_raw[2] >> 7);
 }
 
-// Read x & y-axis from a stick
+// Read x- & y-axis from a stick
 raw_stick get_stick(uint cs_pin) {
   return {read_mcp3202_data(cs_pin, false), read_mcp3202_data(cs_pin, true),
           true};

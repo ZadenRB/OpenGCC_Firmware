@@ -1,5 +1,5 @@
 /*
-    Copyright 2023 Zaden Ruggiero-Bouné
+    Copyright 2023-2025 Zaden Ruggiero-Bouné
 
     This file is part of OpenGCC.
 
@@ -99,7 +99,7 @@ constexpr uint16_t PHYSICAL_BUTTONS_MASK =
     (1 << LT_DIGITAL_PIN) | (1 << A_PIN) | (1 << B_PIN) | (1 << X_PIN) |
     (1 << Y_PIN) | (1 << START_PIN);
 
-// I2C addresses of sensors for X & Y addresses
+// I2C addresses of sensors for x & y addresses
 constexpr uint32_t X_I2C_ADDR = 0x32;
 constexpr uint32_t Y_I2C_ADDR = 0x33;
 

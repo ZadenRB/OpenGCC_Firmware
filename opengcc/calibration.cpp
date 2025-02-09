@@ -84,12 +84,17 @@ stick_calibration_measurement stick_calibration::get_measurement() {
 stick_coefficients stick_calibration::generate_coefficients() {
   stick_coefficients ret;
 
+#if NORMALIZATION_ALGORITHM == NONE
+  ret.x_coefficients = std::array<double, NUM_COEFFICIENTS>{0.0, 1.0};
+  ret.y_coefficients = std::array<double, NUM_COEFFICIENTS>{0.0, 1.0};
+#else
   ret.x_coefficients = fit_curve<NUM_COEFFICIENTS, NUM_CALIBRATION_STEPS>(
       expected_measurement.x_coordinates, actual_measurement.x_coordinates,
       actual_measurement.skipped_measurements);
   ret.y_coefficients = fit_curve<NUM_COEFFICIENTS, NUM_CALIBRATION_STEPS>(
       expected_measurement.y_coordinates, actual_measurement.y_coordinates,
       actual_measurement.skipped_measurements);
+#endif
 
   return ret;
 }

@@ -16,15 +16,15 @@
    OpenGCC. If not, see http://www.gnu.org/licenses/.
 */
 
-#include "PhobGCC.hpp"
+#include "controller.hpp"
 
 #include <array>
 
+#include "analog_controller.hpp"
 #include "hardware/adc.h"
 #include "hardware/dma.h"
 #include "hardware/spi.h"
-#include "opengcc/controller.hpp"
-#include "opengcc/state.hpp"
+#include "state.hpp"
 
 std::array<uint8_t, 3> stick_raw;
 

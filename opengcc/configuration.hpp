@@ -1,5 +1,5 @@
 /*
-    Copyright 2023 Zaden Ruggiero-Bouné
+    Copyright 2023-2025 Zaden Ruggiero-Bouné
 
     This file is part of OpenGCC.
 
@@ -22,8 +22,8 @@
 #include <array>
 #include <functional>
 
+#include "analog_controller.hpp"
 #include "calibration.hpp"
-#include "controller.hpp"
 #include "hardware/flash.h"
 #include "state.hpp"
 

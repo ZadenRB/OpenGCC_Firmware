@@ -1,5 +1,5 @@
 /*
-    Copyright 2023 Zaden Ruggiero-Bouné
+    Copyright 2023-2025 Zaden Ruggiero-Bouné
 
     This file is part of OpenGCC.
 
@@ -18,7 +18,6 @@
 
 #include "joybus.hpp"
 
-#include CONFIG_H
 #if JOYBUS_IN_PIN == JOYBUS_OUT_PIN
 #include "single_pin_joybus.pio.h"
 const pio_program program = single_pin_joybus_program;

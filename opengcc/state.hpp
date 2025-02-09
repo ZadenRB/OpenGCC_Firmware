@@ -1,5 +1,5 @@
 /*
-    Copyright 2023 Zaden Ruggiero-Bouné
+    Copyright 2023-2025 Zaden Ruggiero-Bouné
 
     This file is part of OpenGCC.
 
@@ -76,15 +76,21 @@ constexpr uint ORIGIN = 13;
 /// \brief Center point of analog stick
 constexpr uint16_t CENTER = 127;
 
-/// \brief Number of coefficients for stick linearization
+/// \brief Number of coefficients for stick normalization
+#if NORMALIZATION_ALGORITHM == POLYNOMIAL
 constexpr int NUM_COEFFICIENTS = 4;
+#elif NORMALIZATION_ALGORITHM == LINEAR
+constexpr int NUM_COEFFICIENTS = 2;
+#elif NORMALIZATION_ALGORITHM == NONE
+constexpr int NUM_COEFFICIENTS = 2;
+#endif
 
-/// \brief Calibration points for x & y axis of an analog stick
+/// \brief Calibration coefficients for x- & y- axis of an analog stick
 struct stick_coefficients {
-  /// \brief Coefficients for x-axis linearization
+  /// \brief Coefficients for x-axis for normalization
   std::array<double, NUM_COEFFICIENTS> x_coefficients;
 
-  /// \brief Coefficients for y axis of linearization
+  /// \brief Coefficients for y-axis for normalization
   std::array<double, NUM_COEFFICIENTS> y_coefficients;
 };
 

@@ -1,5 +1,5 @@
 /*
-    Copyright 2023 Zaden Ruggiero-Bouné
+    Copyright 2023-2025 Zaden Ruggiero-Bouné
 
     This file is part of OpenGCC.
 
@@ -20,7 +20,6 @@
 #define _CURVE_FITTING_H_
 
 #include <array>
-#include <cassert>
 #include <vector>
 
 /** \file curve_fitting.hpp
@@ -45,10 +44,10 @@ std::array<std::array<double, dimension>, dimension> convert_to_inverse(
  * Produces coefficients for a function
  * `coefficients[0]*x^0 + ... + coefficients[i]*x^i + ... + `
  * `coefficients[num_coefficients-1]*x^(num_coefficients-1)`.
- * Used to linearize Hall-Effect sensor output.
+ * Used to normalize  sensor output.
  *
  * \note Increasing `num_coefficients` will increase runtime of sensor
- * linearization which is run on every poll, so there is a tradeoff between
+ * normalization which is run on every poll, so there is a tradeoff between
  * accuracy and performance.
  *
  * \tparam num_coefficients Number of coefficients to generate

@@ -1,21 +1,13 @@
-function(add_controller CONTROLLER CONTROLLER_TARGET)
-    add_subdirectory(${CONTROLLER})
+function(init_controller CONTROLLER)
+    add_executable(${CONTROLLER})
 
-    get_target_property(OPENGCC_SOURCE_DIR OpenGCC SOURCE_DIR)
-    get_directory_property(CONTROLLER_SOURCE_DIR DIRECTORY ${CONTROLLER} SOURCE_DIR)
-    set_property(
-        SOURCE ${OPENGCC_SOURCE_DIR}/opengcc/main.cpp
-        DIRECTORY ${CONTROLLER_SOURCE_DIR}
-        PROPERTY COMPILE_DEFINITIONS
-        CONFIG_H="${CONTROLLER_SOURCE_DIR}/config.hpp"
-    )
-    set_property(
-        SOURCE ${OPENGCC_SOURCE_DIR}/opengcc/joybus.cpp
-        DIRECTORY ${CONTROLLER_SOURCE_DIR}
-        PROPERTY COMPILE_DEFINITIONS
-        CONFIG_H="${CONTROLLER_SOURCE_DIR}/config.hpp"
+    target_sources(${CONTROLLER} PRIVATE
+        controller.hpp
+        controller.cpp
     )
 
-    target_link_libraries(${CONTROLLER_TARGET} OpenGCC)
-    pico_set_binary_type(${CONTROLLER_TARGET} copy_to_ram)
+    target_link_libraries(${CONTROLLER} OpenGCC)
+
+    pico_add_extra_outputs(${CONTROLLER})
+    pico_set_binary_type(${CONTROLLER} copy_to_ram)
 endfunction()

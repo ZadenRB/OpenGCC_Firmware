@@ -1,5 +1,5 @@
 /*
-    Copyright 2023 Zaden Ruggiero-Bouné
+    Copyright 2023-2025 Zaden Ruggiero-Bouné
 
     This file is part of OpenGCC.
 
@@ -18,11 +18,10 @@
 
 #include "main.hpp"
 
-#include CONFIG_H
-
 #include <algorithm>
 #include <cmath>
 
+#include "analog_controller.hpp"
 #include "calibration.hpp"
 #include "configuration.hpp"
 #include "hardware/clocks.h"
@@ -303,34 +302,34 @@ stick process_raw_stick(raw_stick stick_data, stick previous_stick,
     return previous_stick;
   }
 
-  double linearized_x =
-      linearize_axis(stick_data.x, coefficients.x_coefficients);
-  double linearized_y =
-      linearize_axis(stick_data.y, coefficients.y_coefficients);
+  double normalized_x =
+      normalize_axis(stick_data.x, coefficients.x_coefficients);
+  double normalized_y =
+      normalize_axis(stick_data.y, coefficients.y_coefficients);
 
-  return remap_stick(linearized_x, linearized_y, snapback_state, range);
+  return remap_stick(normalized_x, normalized_y, snapback_state, range);
 }
 
-double linearize_axis(uint16_t raw_axis,
+double normalize_axis(uint16_t raw_axis,
                       std::array<double, NUM_COEFFICIENTS> axis_coefficients) {
-  double linearized_axis = 0;
+  double normalized_axis = 0;
   for (int i = 0; i < NUM_COEFFICIENTS; ++i) {
     double raised_raw = 1;
     for (int j = 0; j < i; ++j) {
       raised_raw *= raw_axis;
     }
-    linearized_axis += axis_coefficients[i] * raised_raw;
+    normalized_axis += axis_coefficients[i] * raised_raw;
   }
 
-  return linearized_axis;
+  return normalized_axis;
 }
 
-stick remap_stick(double linearized_x, double linearized_y,
+stick remap_stick(double normalized_x, double normalized_y,
                   stick_snapback_state &snapback_state, uint8_t range) {
   controller_configuration &config = controller_configuration::get_instance();
 
   precise_stick unsnapped_stick =
-      unsnap_stick(linearized_x, linearized_y, snapback_state);
+      unsnap_stick(normalized_x, normalized_y, snapback_state);
 
   double min_value = CENTER - range;
   double max_value = CENTER + range;
@@ -341,12 +340,12 @@ stick remap_stick(double linearized_x, double linearized_y,
   return stick{x, y};
 }
 
-precise_stick unsnap_stick(double linearized_x, double linearized_y,
+precise_stick unsnap_stick(double normalized_x, double normalized_y,
                            stick_snapback_state &snapback_state) {
   absolute_time_t now = get_absolute_time();
 
-  double x_displacement = linearized_x - CENTER;
-  double y_displacement = linearized_y - CENTER;
+  double x_displacement = normalized_x - CENTER;
+  double y_displacement = normalized_y - CENTER;
   double x_distance = fabs(x_displacement);
   double y_distance = fabs(y_displacement);
 
@@ -370,9 +369,9 @@ precise_stick unsnap_stick(double linearized_x, double linearized_y,
     snapback_state.y.last_eligible_to_snapback = nil_time;
   }
 
-  double unsnapped_x = unsnap_axis(linearized_x, x_displacement, x_distance,
+  double unsnapped_x = unsnap_axis(normalized_x, x_displacement, x_distance,
                                    y_distance, now, snapback_state.x);
-  double unsnapped_y = unsnap_axis(linearized_y, y_displacement, y_distance,
+  double unsnapped_y = unsnap_axis(normalized_y, y_displacement, y_distance,
                                    x_distance, now, snapback_state.y);
 
   return {unsnapped_x, unsnapped_y};
@@ -384,7 +383,7 @@ bool axis_crossed_center(double displacement, double last_displacement,
          other_axis_distance <= CROSSING_DISTANCE;
 }
 
-double unsnap_axis(double linearized_axis, double axis_displacement,
+double unsnap_axis(double normalized_axis, double axis_displacement,
                    double axis_distance, double other_axis_distance,
                    absolute_time_t now, axis_snapback_state &snapback_state) {
   double last_distance = fabs(snapback_state.last_displacement);
@@ -431,5 +430,5 @@ double unsnap_axis(double linearized_axis, double axis_displacement,
     return CENTER;
   }
 
-  return linearized_axis;
+  return normalized_axis;
 }

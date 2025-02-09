@@ -19,6 +19,8 @@
 #ifndef CONTROLLER_H_
 #define CONTROLLER_H_
 
+#include <pico/types.h>
+
 /** \file controller.hpp
  * \brief Functionality that is varies in implementation between controllers
  */

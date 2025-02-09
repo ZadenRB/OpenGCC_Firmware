@@ -1,5 +1,5 @@
 /*
-    Copyright 2023 Zaden Ruggiero-Bouné
+    Copyright 2023-2025 Zaden Ruggiero-Bouné
 
     This file is part of OpenGCC.
 
@@ -99,7 +99,7 @@ class stick_calibration {
      *
      * \note See src/curve_fitting.hpp for details on coefficient output
      *
-     * \return Coefficients to linearize stick
+     * \return Coefficients to normalize stick
      */
   stick_coefficients generate_coefficients();
 };

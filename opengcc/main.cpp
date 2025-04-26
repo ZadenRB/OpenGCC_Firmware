@@ -218,22 +218,21 @@ void analog_main() {
 void read_triggers() {
   controller_configuration &config = controller_configuration::get_instance();
 
-  uint8_t l_trigger, r_trigger;
-
   // Read trigger values
   raw_triggers trigger_data = get_triggers();
 
   // Adjust trigger values based on center values
-  l_trigger -= std::min(trigger_data.l, state.l_trigger_center);
-  r_trigger -= std::min(trigger_data.r, state.r_trigger_center);
+  trigger_data.l -= std::min(trigger_data.l, state.l_trigger_center);
+  trigger_data.r -= std::min(trigger_data.r, state.r_trigger_center);
 
   // Apply analog trigger modes
   triggers new_triggers;
+
   new_triggers.l_trigger = apply_trigger_mode_analog(
-      l_trigger, config.l_trigger_configured_value(), state.lt_pressed,
+      trigger_data.l, config.l_trigger_configured_value(), state.lt_pressed,
       config.mapping(LT_DIGITAL) == LT_DIGITAL, config.l_trigger_mode());
   new_triggers.r_trigger = apply_trigger_mode_analog(
-      r_trigger, config.r_trigger_configured_value(), state.rt_pressed,
+      trigger_data.r, config.r_trigger_configured_value(), state.rt_pressed,
       config.mapping(RT_DIGITAL) == RT_DIGITAL, config.r_trigger_mode());
   state.analog_triggers = new_triggers;
 }
